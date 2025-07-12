@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/home/asbjornb/.local/bin/mise doctor)",
+      "Bash(export PATH=\"$HOME/.local/bin:$PATH\" && cd /mnt/c/code/Deeploop)",
+      "Bash(/home/asbjornb/.local/bin/mise install)",
+      "Bash(/home/asbjornb/.local/bin/mise trust)",
+      "Bash(/home/asbjornb/.local/bin/mise run install)",
+      "Bash(/home/asbjornb/.local/bin/mise run test)",
+      "Bash(task:*)",
+      "Bash(sudo mv:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(export:*)",
+      "Bash(/home/asbjornb/.local/bin/task --list)"
+    ],
+    "deny": []
+  }
+}
