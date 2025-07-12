@@ -60,40 +60,46 @@ deeploop/
 ## Getting Started
 
 ### Prerequisites
-- Node.js (16+ recommended)
+- [mise](https://mise.jdx.dev/) - Runtime version management
+- [Taskfile](https://taskfile.dev/) - Task runner
 - Modern web browser
 
 ### Local Development
 1. Clone the repository
-2. Install dependencies: `npm install`
-3. Run tests: `npm test` (auto-save and core features)
-4. Start development server: `npm run dev`
+2. Install runtimes: `mise install` (installs Node.js 20)
+3. Set up project: `task setup` (installs dependencies and runs tests)
+4. Start development: `task dev`
 5. Open browser to `http://localhost:3000`
 
-### Testing
-Run the test suite to ensure auto-save and core functionality:
+### Available Tasks
 ```bash
-npm test              # Run all tests
-npm run test:watch    # Run tests in watch mode
-npm run test:save     # Run only auto-save tests
+task               # Show all available tasks
+task dev           # Start development server
+task test          # Run all tests
+task test:watch    # Run tests in watch mode
+task test:save     # Run only auto-save tests
+task build         # Build for production
+task lint          # Lint code
+task format        # Format code
+task ci            # Run CI checks (lint + test + build)
 ```
 
 ### Building for Production
 ```bash
-npm run build
+task build
 ```
 This creates a `dist/` folder ready for deployment to GitHub Pages or Cloudflare Pages.
 
 ## Deployment Options
 
 ### GitHub Pages
-1. Build the project: `npm run build`
+1. Build the project: `task build`
 2. Push the `dist/` folder to the `gh-pages` branch
 3. Enable GitHub Pages in repository settings
 
 ### Cloudflare Pages
 1. Connect your GitHub repository to Cloudflare Pages
-2. Set build command: `npm run build`
+2. Set build command: `task build`
 3. Set build output directory: `dist`
 
 ## Features Roadmap
