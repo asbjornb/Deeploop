@@ -16,6 +16,8 @@ The game blends light strategy, quirky humor, and satisfying progression through
 - **Web Audio API** - For sound effects and music
 
 ### Development Tools
+- **mise** - Runtime version management (Node.js)
+- **Taskfile** - Task runner for build, test, and development commands
 - **Vite** - Fast development server and build tool
 - **Vitest** - Testing framework for continuous test coverage
 - **ESLint** - Code linting
@@ -30,6 +32,8 @@ The game blends light strategy, quirky humor, and satisfying progression through
 ```
 deeploop/
 ├── index.html          # Main entry point
+├── .mise.toml          # Runtime version management
+├── Taskfile.yml        # Task definitions
 ├── src/
 │   ├── game/
 │   │   ├── engine.js    # Core game loop
