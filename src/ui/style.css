@@ -1,0 +1,736 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-dark: #0a0a0f;
+  --bg-panel: #12121a;
+  --bg-card: #1a1a2e;
+  --bg-highlight: #252540;
+  --text-primary: #e0e0e0;
+  --text-secondary: #8888aa;
+  --text-dim: #555570;
+  --accent-gold: #d4a844;
+  --accent-red: #cc4444;
+  --accent-green: #44aa44;
+  --accent-blue: #4488cc;
+  --accent-purple: #8844cc;
+  --accent-orange: #cc8844;
+  --border-color: #2a2a40;
+  --hp-bar: #44aa44;
+  --hp-bar-bg: #1a3a1a;
+  --mp-bar: #4488cc;
+  --mp-bar-bg: #1a2a3a;
+  --xp-bar: #d4a844;
+  --xp-bar-bg: #2a2a1a;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: 'Courier New', Courier, monospace;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px;
+  gap: 8px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.header h1 {
+  font-size: 1.2rem;
+  color: var(--accent-gold);
+  letter-spacing: 2px;
+}
+
+.header-info {
+  display: flex;
+  gap: 20px;
+  font-size: 0.85rem;
+}
+
+.header-info span {
+  color: var(--text-secondary);
+}
+
+.header-info .value {
+  color: var(--accent-gold);
+  font-weight: bold;
+}
+
+/* Main Layout */
+.main-area {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Dungeon Panel */
+.dungeon-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dungeon-view {
+  flex: 1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.dungeon-view .room-title {
+  font-size: 1rem;
+  color: var(--accent-gold);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+}
+
+.dungeon-view .room-description {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.dungeon-view .room-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.enemy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.enemy-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.enemy-card.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.enemy-name {
+  font-weight: bold;
+}
+
+.enemy-hp {
+  color: var(--accent-red);
+  font-size: 0.8rem;
+}
+
+/* Combat Log */
+.combat-log {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  height: 150px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.combat-log .log-entry {
+  color: var(--text-secondary);
+  padding: 1px 0;
+}
+
+.combat-log .log-entry.damage {
+  color: var(--accent-red);
+}
+
+.combat-log .log-entry.heal {
+  color: var(--accent-green);
+}
+
+.combat-log .log-entry.info {
+  color: var(--accent-blue);
+}
+
+.combat-log .log-entry.gold {
+  color: var(--accent-gold);
+}
+
+.combat-log .log-entry.level {
+  color: var(--accent-purple);
+}
+
+.combat-log .log-entry.important {
+  color: var(--accent-gold);
+  font-weight: bold;
+}
+
+/* Party Panel */
+.party-panel {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.char-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.char-card.dead {
+  opacity: 0.5;
+}
+
+.char-card .char-name {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.char-card .char-class {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.stat-bar {
+  height: 12px;
+  background: var(--hp-bar-bg);
+  border-radius: 2px;
+  margin: 3px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-bar .bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.stat-bar .bar-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: var(--text-primary);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.stat-bar.hp .bar-fill {
+  background: var(--hp-bar);
+}
+
+.stat-bar.mp {
+  background: var(--mp-bar-bg);
+}
+
+.stat-bar.mp .bar-fill {
+  background: var(--mp-bar);
+}
+
+.stat-bar.xp {
+  background: var(--xp-bar-bg);
+  height: 8px;
+}
+
+.stat-bar.xp .bar-fill {
+  background: var(--xp-bar);
+}
+
+.char-stats {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+.char-stats span {
+  background: var(--bg-card);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* Action Bar */
+.action-bar {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.action-bar button {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-bar button:hover {
+  background: var(--bg-highlight);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.action-bar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-bar button:disabled:hover {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Start Screen */
+.start-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  text-align: center;
+}
+
+.start-screen h1 {
+  font-size: 2.5rem;
+  color: var(--accent-gold);
+  letter-spacing: 6px;
+}
+
+.start-screen .tagline {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.start-screen .menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.start-screen .menu-buttons button {
+  padding: 12px 40px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 200px;
+}
+
+.start-screen .menu-buttons button:hover {
+  background: var(--bg-highlight);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.start-screen .menu-buttons button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-gold);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal h2 {
+  color: var(--accent-gold);
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+}
+
+.modal .modal-section {
+  margin-bottom: 16px;
+}
+
+.modal .modal-section h3 {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.modal button {
+  padding: 8px 16px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin: 4px;
+}
+
+.modal button:hover {
+  background: var(--bg-highlight);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.modal button.primary {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.modal button.danger {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.modal button.danger:hover {
+  border-color: var(--accent-red);
+  color: #ff6666;
+}
+
+/* Inventory Item */
+.item-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.item-card .item-name {
+  color: var(--accent-gold);
+}
+
+.item-card .item-stats {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.item-card .item-tier-1 {
+  color: var(--text-secondary);
+}
+.item-card .item-tier-2 {
+  color: var(--accent-green);
+}
+.item-card .item-tier-3 {
+  color: var(--accent-blue);
+}
+.item-card .item-tier-4 {
+  color: var(--accent-purple);
+}
+
+/* Achievement */
+.achievement {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  font-size: 0.8rem;
+}
+
+.achievement.unlocked {
+  border-color: var(--accent-gold);
+}
+
+.achievement .ach-name {
+  font-weight: bold;
+}
+
+.achievement .ach-desc {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+/* Prestige Info */
+.prestige-info {
+  text-align: center;
+  padding: 16px;
+}
+
+.prestige-info .prestige-level {
+  font-size: 1.5rem;
+  color: var(--accent-purple);
+  margin-bottom: 8px;
+}
+
+.prestige-info .prestige-bonus {
+  color: var(--accent-gold);
+  font-size: 0.9rem;
+}
+
+/* Floor Progress */
+.floor-progress {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.floor-progress .room-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.floor-progress .room-dot.current {
+  border-color: var(--accent-gold);
+  background: var(--bg-highlight);
+}
+
+.floor-progress .room-dot.explored {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.floor-progress .room-dot.combat {
+  border-color: var(--accent-red);
+}
+
+.floor-progress .room-dot.treasure {
+  border-color: var(--accent-gold);
+}
+
+.floor-progress .room-dot.event {
+  border-color: var(--accent-blue);
+}
+
+.floor-progress .room-dot.safe {
+  border-color: var(--accent-green);
+}
+
+/* Save indicator */
+.save-indicator {
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.save-indicator.visible {
+  opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-area {
+    flex-direction: column;
+  }
+
+  .party-panel {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow-x: auto;
+  }
+
+  .char-card {
+    min-width: 200px;
+    flex: 1;
+  }
+
+  .combat-log {
+    height: 100px;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* Safe room specific styles */
+.safe-room-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.safe-room-actions button {
+  padding: 10px 16px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.safe-room-actions button:hover {
+  background: var(--bg-highlight);
+  border-color: var(--accent-gold);
+}
+
+.safe-room-actions button .btn-desc {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Equipment display in modal */
+.equip-slot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.equip-slot .slot-name {
+  color: var(--text-dim);
+  width: 80px;
+}
+
+.equip-slot .slot-item {
+  color: var(--accent-gold);
+  flex: 1;
+}
+
+.equip-slot .slot-empty {
+  color: var(--text-dim);
+  font-style: italic;
+  flex: 1;
+}
+
+/* Skill display */
+.skill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+
+.skill-row .skill-name {
+  color: var(--accent-blue);
+}
+
+.skill-row .skill-level {
+  color: var(--text-dim);
+}
+
+/* Defeat screen */
+.defeat-message {
+  text-align: center;
+  padding: 24px;
+  color: var(--accent-red);
+  font-size: 1.1rem;
+}
+
+.defeat-message .sub {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 8px;
+}

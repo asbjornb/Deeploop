@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:save": "vitest --run src/utils/save.test.js",
+    "test:save": "vitest --run tests/save.test.js",
     "lint": "eslint src --ext .js",
     "lint:fix": "eslint src --ext .js --fix",
     "format": "prettier --write src/**/*.{js,css,html}"
