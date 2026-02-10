@@ -1,5 +1,5 @@
 import { CLASSES, RACES, getEffectiveStat } from '../game/party.js';
-import { SKILLS, ACHIEVEMENTS, getPrestigeBonus, calculatePrestigePoints } from '../game/progression.js';
+import { SKILLS, ACHIEVEMENTS, LEARNABLE_SKILLS, getPrestigeBonus, calculatePrestigePoints, getAvailableSkills } from '../game/progression.js';
 import { canEquip, getEquipDelta } from '../game/dungeon.js';
 import { formatNumber } from '../utils/math.js';
 import { hasSave } from '../utils/save.js';
@@ -229,9 +229,9 @@ export class GameUI {
           Manage Equipment
           <span class="btn-desc">Equip items from inventory (${state.inventory.items.length} items)</span>
         </button>
-        <button id="btn-view-skills">
-          View Skills
-          <span class="btn-desc">Check party skills and progression</span>
+        <button id="btn-train-skills">
+          Train Skills
+          <span class="btn-desc">Spend skill points to upgrade or learn skills</span>
         </button>
         <button id="btn-continue">
           Continue Deeper
@@ -245,12 +245,12 @@ export class GameUI {
       const btnCont = document.getElementById('btn-continue');
       const btnShop = document.getElementById('btn-shop');
       const btnInv = document.getElementById('btn-manage-inventory');
-      const btnSkills = document.getElementById('btn-view-skills');
+      const btnTrain = document.getElementById('btn-train-skills');
 
       if (btnCont) btnCont.addEventListener('click', () => this.engine.continueExploring());
       if (btnShop) btnShop.addEventListener('click', () => this.showShopModal(this.engine.state));
       if (btnInv) btnInv.addEventListener('click', () => this.showInventoryModal(this.engine.state));
-      if (btnSkills) btnSkills.addEventListener('click', () => this.showSkillsModal(this.engine.state));
+      if (btnTrain) btnTrain.addEventListener('click', () => this.showTrainSkillsModal(this.engine.state));
     }, 0);
 
     return container;
@@ -611,28 +611,107 @@ export class GameUI {
   }
 
   showSkillsModal(state) {
-    this.showModal('Party Skills', (content) => {
+    this.showTrainSkillsModal(state);
+  }
+
+  showTrainSkillsModal(state) {
+    this.showModal('Train Skills', (content) => {
       for (const char of state.party) {
         const section = document.createElement('div');
         section.className = 'modal-section';
-        section.innerHTML = `<h3>${char.name} - ${CLASSES[char.class].name}</h3>`;
+        section.innerHTML = `
+          <h3>${char.name} - ${CLASSES[char.class].name}</h3>
+          <div class="skill-points-display">Skill Points: <span class="value">${char.skillPoints}</span></div>
+        `;
+
+        // Current skills with upgrade buttons
+        const knownHeader = document.createElement('div');
+        knownHeader.className = 'train-subheader';
+        knownHeader.textContent = 'Known Skills';
+        section.appendChild(knownHeader);
 
         for (const charSkill of char.skills) {
           const skillDef = SKILLS[charSkill.id];
           if (!skillDef) continue;
 
           const row = document.createElement('div');
-          row.className = 'skill-row';
-          row.innerHTML = `
-            <span class="skill-name">${skillDef.name}</span>
-            <span class="skill-level">Lv.${charSkill.level} (${charSkill.uses} uses)</span>
-          `;
-          section.appendChild(row);
+          row.className = 'skill-row train-row';
 
-          const desc = document.createElement('div');
-          desc.style.cssText = 'font-size:0.7rem;color:var(--text-dim);margin-bottom:4px;';
-          desc.textContent = skillDef.description;
-          section.appendChild(desc);
+          const maxLevel = 5;
+          const upgradeCost = charSkill.level;
+          const canUpgrade = charSkill.level < maxLevel && char.skillPoints >= upgradeCost;
+          const atMax = charSkill.level >= maxLevel;
+
+          row.innerHTML = `
+            <div class="skill-info">
+              <span class="skill-name">${skillDef.name}</span>
+              <span class="skill-level">Lv.${charSkill.level}${atMax ? ' (MAX)' : ''}</span>
+              <div class="skill-desc">${skillDef.description}</div>
+              <div class="skill-usage">${charSkill.uses} uses | MP: ${skillDef.mpCost}</div>
+            </div>
+          `;
+
+          if (!atMax) {
+            const upgradeBtn = document.createElement('button');
+            upgradeBtn.className = 'btn-small btn-upgrade';
+            upgradeBtn.textContent = `Upgrade (${upgradeCost} SP)`;
+            upgradeBtn.disabled = !canUpgrade;
+            if (!canUpgrade && !atMax) {
+              upgradeBtn.title = `Need ${upgradeCost} SP`;
+            }
+            upgradeBtn.addEventListener('click', () => {
+              this.engine.upgradeCharacterSkill(char.id, charSkill.id);
+              this.closeModal();
+              this.showTrainSkillsModal(this.engine.state);
+            });
+            row.appendChild(upgradeBtn);
+          }
+
+          section.appendChild(row);
+        }
+
+        // Available new skills to learn
+        const available = getAvailableSkills(char, state.achievements);
+        const unlearnedSkills = available.filter((s) => !s.alreadyKnown);
+
+        if (unlearnedSkills.length > 0) {
+          const learnHeader = document.createElement('div');
+          learnHeader.className = 'train-subheader';
+          learnHeader.textContent = 'Learn New Skills';
+          section.appendChild(learnHeader);
+
+          for (const ls of unlearnedSkills) {
+            const row = document.createElement('div');
+            row.className = `skill-row train-row${ls.locked ? ' skill-locked' : ''}`;
+
+            const canLearn = !ls.locked && char.skillPoints >= ls.cost;
+
+            row.innerHTML = `
+              <div class="skill-info">
+                <span class="skill-name">${ls.locked ? '???' : ls.name}</span>
+                <div class="skill-desc">${ls.description}</div>
+                ${ls.locked ? `<div class="skill-lock-reason">Locked - Requires achievement: ${ls.lockReason}</div>` : ''}
+              </div>
+            `;
+
+            if (!ls.locked) {
+              const learnBtn = document.createElement('button');
+              learnBtn.className = 'btn-small btn-learn';
+              learnBtn.textContent = `Learn (${ls.cost} SP)`;
+              learnBtn.disabled = !canLearn;
+              if (!canLearn) {
+                learnBtn.title = `Need ${ls.cost} SP`;
+              }
+              learnBtn.addEventListener('click', () => {
+                this.engine.learnCharacterSkill(char.id, ls.skillId);
+                this.closeModal();
+                this.showTrainSkillsModal(this.engine.state);
+              });
+              row.appendChild(learnBtn);
+            }
+
+            section.appendChild(row);
+          }
         }
 
         content.appendChild(section);

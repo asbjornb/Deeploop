@@ -117,6 +117,269 @@ export const SKILLS = {
 };
 
 /**
+ * Skills that can be learned in safe rooms by spending skill points.
+ * Some are gated behind achievements. Each has class restrictions.
+ */
+export const LEARNABLE_SKILLS = [
+  // Warrior skills
+  {
+    skillId: 'fortify',
+    name: 'Fortify',
+    classes: ['warrior'],
+    cost: 2,
+    achievementReq: null,
+    description: 'Self-buff: +40% DEF for 4 turns.',
+  },
+  {
+    skillId: 'whirlwind',
+    name: 'Whirlwind',
+    classes: ['warrior'],
+    cost: 3,
+    achievementReq: 'killer_100',
+    description: 'Physical AoE. Strike all enemies. Requires: Centurion.',
+  },
+
+  // Mage skills
+  {
+    skillId: 'mana_shield',
+    name: 'Mana Shield',
+    classes: ['mage'],
+    cost: 2,
+    achievementReq: null,
+    description: 'Self-buff: absorb damage using MP for 3 turns.',
+  },
+  {
+    skillId: 'chain_lightning',
+    name: 'Chain Lightning',
+    classes: ['mage'],
+    cost: 3,
+    achievementReq: 'floor_10',
+    description: 'Magic damage to 2 random enemies. Requires: Spelunker.',
+  },
+
+  // Rogue skills
+  {
+    skillId: 'smoke_bomb',
+    name: 'Smoke Bomb',
+    classes: ['rogue'],
+    cost: 2,
+    achievementReq: null,
+    description: 'Party buff: +dodge for 2 turns.',
+  },
+  {
+    skillId: 'shadow_strike',
+    name: 'Shadow Strike',
+    classes: ['rogue'],
+    cost: 3,
+    achievementReq: 'boss_slayer',
+    description: 'Guaranteed critical hit (2.5x). Requires: Boss Slayer.',
+  },
+
+  // Healer skills
+  {
+    skillId: 'mass_heal',
+    name: 'Mass Heal',
+    classes: ['healer'],
+    cost: 2,
+    achievementReq: 'floor_5',
+    description: 'Heal all allies. Requires: Getting Deeper.',
+  },
+  {
+    skillId: 'life_drain',
+    name: 'Life Drain',
+    classes: ['healer'],
+    cost: 3,
+    achievementReq: 'veteran',
+    description: 'Magic damage; heal self for 50% dealt. Requires: Veteran.',
+  },
+
+  // Cross-class skills (any class can learn)
+  {
+    skillId: 'rally',
+    name: 'Rally',
+    classes: ['warrior', 'mage', 'rogue', 'healer'],
+    cost: 3,
+    achievementReq: 'deaths_10',
+    description: 'Heal entire party for 15% max HP. Requires: Persistent.',
+  },
+  {
+    skillId: 'second_wind',
+    name: 'Second Wind',
+    classes: ['warrior', 'mage', 'rogue', 'healer'],
+    cost: 3,
+    achievementReq: 'floor_25',
+    description: 'Self-buff: auto-heal 25% HP when below 20%. Once per combat. Requires: Deep Diver.',
+  },
+];
+
+// Skill definitions for learnable skills (combat behavior)
+export const LEARNABLE_SKILL_DEFS = {
+  fortify: {
+    name: 'Fortify',
+    type: 'buff',
+    target: 'self',
+    mpCost: 3,
+    buffStat: 'def',
+    buffAmount: 0.4,
+    duration: 4,
+    description: 'Greatly boosts own DEF.',
+  },
+  whirlwind: {
+    name: 'Whirlwind',
+    type: 'physical',
+    target: 'all',
+    mpCost: 5,
+    basePower: 1.2,
+    description: 'Physical damage to all enemies.',
+  },
+  mana_shield: {
+    name: 'Mana Shield',
+    type: 'buff',
+    target: 'self',
+    mpCost: 4,
+    effect: 'mana_shield',
+    duration: 3,
+    description: 'Absorb damage using MP.',
+  },
+  chain_lightning: {
+    name: 'Chain Lightning',
+    type: 'magic',
+    target: 'multi',
+    mpCost: 6,
+    basePower: 1.5,
+    hitCount: 2,
+    description: 'Lightning strikes 2 random enemies.',
+  },
+  smoke_bomb: {
+    name: 'Smoke Bomb',
+    type: 'buff',
+    target: 'party',
+    mpCost: 4,
+    effect: 'dodge',
+    duration: 2,
+    description: 'Grants dodge to entire party.',
+  },
+  shadow_strike: {
+    name: 'Shadow Strike',
+    type: 'physical',
+    target: 'single',
+    mpCost: 6,
+    basePower: 2.5,
+    guaranteedCrit: true,
+    description: 'A guaranteed critical strike.',
+  },
+  mass_heal: {
+    name: 'Mass Heal',
+    type: 'heal',
+    target: 'party',
+    mpCost: 8,
+    basePower: 1.0,
+    description: 'Restore HP to all allies.',
+  },
+  life_drain: {
+    name: 'Life Drain',
+    type: 'magic',
+    target: 'single',
+    mpCost: 5,
+    basePower: 1.3,
+    effect: 'life_steal',
+    lifeStealRatio: 0.5,
+    description: 'Magic damage. Heals self for half dealt.',
+  },
+  rally: {
+    name: 'Rally',
+    type: 'heal',
+    target: 'party_pct',
+    mpCost: 6,
+    healPct: 0.15,
+    description: 'Heal entire party for 15% max HP.',
+  },
+  second_wind: {
+    name: 'Second Wind',
+    type: 'buff',
+    target: 'self',
+    mpCost: 0,
+    effect: 'second_wind',
+    duration: 99,
+    description: 'Auto-heal 25% HP when below 20%. Once per combat.',
+  },
+};
+
+// Merge learnable skill defs into SKILLS so combat can reference them all
+Object.assign(SKILLS, LEARNABLE_SKILL_DEFS);
+
+/**
+ * Get available learnable skills for a character given their class and unlocked achievements.
+ * Returns array of { ...learnableDef, locked: bool, lockReason: string|null, alreadyKnown: bool }.
+ */
+export function getAvailableSkills(char, unlockedAchievements) {
+  return LEARNABLE_SKILLS
+    .filter((ls) => ls.classes.includes(char.class))
+    .map((ls) => {
+      const alreadyKnown = char.skills.some((s) => s.id === ls.skillId);
+      const locked = ls.achievementReq && !unlockedAchievements.includes(ls.achievementReq);
+      const achDef = locked ? ACHIEVEMENTS.find((a) => a.id === ls.achievementReq) : null;
+      return {
+        ...ls,
+        alreadyKnown,
+        locked,
+        lockReason: achDef ? achDef.name : null,
+      };
+    });
+}
+
+/**
+ * Learn a new skill for a character. Deducts skill points.
+ * Returns { success, message }.
+ */
+export function learnSkill(char, skillId, unlockedAchievements) {
+  const def = LEARNABLE_SKILLS.find((ls) => ls.skillId === skillId);
+  if (!def) return { success: false, message: 'Skill not found.' };
+  if (!def.classes.includes(char.class)) return { success: false, message: 'Class cannot learn this skill.' };
+
+  if (char.skills.some((s) => s.id === skillId)) {
+    return { success: false, message: 'Already known.' };
+  }
+
+  if (def.achievementReq && !unlockedAchievements.includes(def.achievementReq)) {
+    return { success: false, message: 'Achievement required.' };
+  }
+
+  if (char.skillPoints < def.cost) {
+    return { success: false, message: `Need ${def.cost} skill points (have ${char.skillPoints}).` };
+  }
+
+  char.skillPoints -= def.cost;
+  char.skills.push({ id: skillId, level: 1, xp: 0, uses: 0 });
+  return { success: true, message: `${char.name} learned ${def.name}!` };
+}
+
+/**
+ * Upgrade an existing skill with skill points.
+ * Cost: current level (1 SP at level 1, 2 SP at level 2, etc.)
+ * Returns { success, message }.
+ */
+export function upgradeSkill(char, skillId) {
+  const charSkill = char.skills.find((s) => s.id === skillId);
+  if (!charSkill) return { success: false, message: 'Skill not known.' };
+
+  const cost = charSkill.level;
+  if (char.skillPoints < cost) {
+    return { success: false, message: `Need ${cost} skill points (have ${char.skillPoints}).` };
+  }
+
+  const maxLevel = 5;
+  if (charSkill.level >= maxLevel) {
+    return { success: false, message: 'Skill already at max level.' };
+  }
+
+  char.skillPoints -= cost;
+  charSkill.level++;
+  const skillName = SKILLS[skillId]?.name || skillId;
+  return { success: true, message: `${char.name}'s ${skillName} upgraded to level ${charSkill.level}!` };
+}
+
+/**
  * Award XP to the party from defeated enemies.
  * Returns log entries for any level-ups.
  */

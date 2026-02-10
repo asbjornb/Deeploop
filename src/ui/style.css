@@ -858,6 +858,115 @@ input {
   color: var(--text-dim);
 }
 
+/* Skill Training */
+.skill-points-display {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: var(--bg-card);
+  border-radius: 4px;
+}
+
+.skill-points-display .value {
+  color: var(--accent-gold);
+  font-weight: bold;
+}
+
+.train-subheader {
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 12px 0 6px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.train-row {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.train-row .skill-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.train-row .skill-info .skill-name {
+  font-weight: bold;
+}
+
+.train-row .skill-info .skill-level {
+  margin-left: 8px;
+  font-size: 0.7rem;
+}
+
+.train-row .skill-desc {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.train-row .skill-usage {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+.train-row.skill-locked {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.train-row .skill-lock-reason {
+  font-size: 0.65rem;
+  color: var(--accent-red);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.btn-upgrade {
+  white-space: nowrap;
+  border-color: var(--accent-blue) !important;
+  color: var(--accent-blue) !important;
+}
+
+.btn-upgrade:hover:not(:disabled) {
+  background: var(--bg-highlight) !important;
+  color: var(--accent-gold) !important;
+  border-color: var(--accent-gold) !important;
+}
+
+.btn-upgrade:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-learn {
+  white-space: nowrap;
+  border-color: var(--accent-green) !important;
+  color: var(--accent-green) !important;
+}
+
+.btn-learn:hover:not(:disabled) {
+  background: var(--bg-highlight) !important;
+  color: var(--accent-gold) !important;
+  border-color: var(--accent-gold) !important;
+}
+
+.btn-learn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 /* Shop */
 .shop-gold {
   font-size: 0.9rem;
