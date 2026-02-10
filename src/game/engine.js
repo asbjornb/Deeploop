@@ -15,6 +15,8 @@ import {
   getPrestigeBonus,
   checkAchievements,
   getAchievementBonuses,
+  learnSkill as learnSkillFn,
+  upgradeSkill as upgradeSkillFn,
   ACHIEVEMENTS,
 } from './progression.js';
 
@@ -433,6 +435,30 @@ export class GameEngine {
     }
     this.addLog('info', `${char.name} equips ${item.name}.`);
     this.notify();
+  }
+
+  learnCharacterSkill(charId, skillId) {
+    const char = this.state.party.find((c) => c.id === charId);
+    if (!char) return { success: false, message: 'Character not found.' };
+
+    const result = learnSkillFn(char, skillId, this.state.achievements);
+    if (result.success) {
+      this.addLog('important', result.message);
+    }
+    this.notify();
+    return result;
+  }
+
+  upgradeCharacterSkill(charId, skillId) {
+    const char = this.state.party.find((c) => c.id === charId);
+    if (!char) return { success: false, message: 'Character not found.' };
+
+    const result = upgradeSkillFn(char, skillId);
+    if (result.success) {
+      this.addLog('level', result.message);
+    }
+    this.notify();
+    return result;
   }
 
   performPrestige() {
