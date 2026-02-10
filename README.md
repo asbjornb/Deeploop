@@ -107,27 +107,26 @@ This creates a `dist/` folder ready for deployment to GitHub Pages or Cloudflare
 ## Features Roadmap
 
 ### Core Infrastructure (Priority 1)
-- [ ] **Auto-save system** - Continuous localStorage saving every 10 seconds
-- [ ] **Save/load testing** - Comprehensive test coverage for data persistence
-- [ ] **Game state management** - Centralized state with auto-save integration
+- [x] **Auto-save system** - Continuous localStorage saving every 10 seconds
+- [x] **Save/load testing** - Comprehensive test coverage for data persistence
+- [x] **Game state management** - Centralized state with auto-save integration
 
 ### Core Mechanics
-- [ ] Auto-exploring party system
-- [ ] Turn-based combat with strategic pauses
-- [ ] Skill trees and character progression
-- [ ] Loot and equipment system
-- [ ] Safe room strategy planning
+- [x] Auto-exploring party system
+- [x] Skill trees and character progression
+- [x] Loot and equipment system
+- [x] Safe room strategy planning
 
 ### Progression Systems
-- [ ] Prestige/reset mechanics
-- [ ] Achievement system
+- [x] Prestige/reset mechanics
+- [x] Achievement system
 - [ ] Unlockable classes and races
-- [ ] Skill usage-based improvement
+- [x] Skill usage-based improvement
 
 ### Polish
 - [ ] Quirky humor and flavor text
 - [ ] Sound effects and ambient music
-- [ ] Responsive design for mobile
+- [x] Responsive design for mobile
 - [ ] Offline gameplay support
 
 ## Development Notes

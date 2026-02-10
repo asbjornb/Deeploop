@@ -46,6 +46,13 @@ export class GameUI {
 
     this.container.innerHTML = '';
 
+    // Prestige screen replaces the entire game view
+    if (state.gamePhase === 'prestige') {
+      const prestigeScreen = this.createPrestigeScreen(state);
+      this.container.appendChild(prestigeScreen);
+      return;
+    }
+
     // Header
     const header = this.createHeader(state);
     this.container.appendChild(header);
@@ -61,15 +68,118 @@ export class GameUI {
     main.appendChild(partyPanel);
     this.container.appendChild(main);
 
-    // Action bar
-    const actionBar = this.createActionBar(state);
-    this.container.appendChild(actionBar);
+    // Action bar only in safe rooms
+    if (state.gamePhase === 'safeRoom') {
+      const actionBar = this.createActionBar(state);
+      this.container.appendChild(actionBar);
+    }
 
     // Scroll combat log to bottom
     const logEl = this.container.querySelector('.combat-log');
     if (logEl) {
       logEl.scrollTop = logEl.scrollHeight;
     }
+  }
+
+  createPrestigeScreen(state) {
+    const screen = document.createElement('div');
+    screen.className = 'prestige-screen';
+
+    const points = calculatePrestigePoints(state.stats.highestFloor);
+    const canPrestige = state.stats.highestFloor >= 5;
+    const nextBonus = getPrestigeBonus(state.prestige.level + 1);
+    const currentBonus = getPrestigeBonus(state.prestige.level);
+
+    screen.innerHTML = `
+      <h1>THE LOOP ENDS</h1>
+      <p class="prestige-subtitle">Your party fell on Floor ${state.dungeon.currentFloorNum}.</p>
+
+      <div class="prestige-stats">
+        <h2>Run Summary</h2>
+        <div class="stat-grid">
+          <div class="stat-item">
+            <span class="stat-label">Highest Floor</span>
+            <span class="stat-value">${state.stats.highestFloor}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Floors Cleared</span>
+            <span class="stat-value">${state.stats.floorsCleared}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Monsters Killed</span>
+            <span class="stat-value">${state.stats.monstersKilled}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Bosses Slain</span>
+            <span class="stat-value">${state.stats.bossesKilled}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Gold Earned</span>
+            <span class="stat-value">${formatNumber(state.stats.totalGold)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Deaths</span>
+            <span class="stat-value">${state.stats.deaths}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Highest Level</span>
+            <span class="stat-value">${state.stats.highestLevel}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Achievements</span>
+            <span class="stat-value">${state.achievements.length}/${ACHIEVEMENTS.length}</span>
+          </div>
+        </div>
+      </div>
+
+      ${state.prestige.level > 0 ? `
+      <div class="prestige-current">
+        <span class="label">Current Prestige Level</span>
+        <span class="value">${state.prestige.level}</span>
+        <span class="bonuses">+${(currentBonus.statBonus * 100).toFixed(0)}% stats | +${(currentBonus.xpBonus * 100).toFixed(0)}% XP | +${(currentBonus.goldBonus * 100).toFixed(0)}% gold</span>
+      </div>
+      ` : ''}
+
+      <div class="prestige-actions">
+        ${canPrestige ? `
+          <div class="prestige-offer">
+            <h2>Prestige Available</h2>
+            <p class="prestige-points">+${points} prestige points</p>
+            <p class="prestige-next">Next level: +${(nextBonus.statBonus * 100).toFixed(0)}% stats, +${(nextBonus.xpBonus * 100).toFixed(0)}% XP, +${(nextBonus.goldBonus * 100).toFixed(0)}% gold</p>
+          </div>
+        ` : `
+          <div class="prestige-locked">
+            <p>Reach floor 5 to unlock prestige bonuses.</p>
+          </div>
+        `}
+      </div>
+    `;
+
+    // Buttons
+    const buttons = document.createElement('div');
+    buttons.className = 'prestige-buttons';
+
+    if (canPrestige) {
+      const prestigeBtn = document.createElement('button');
+      prestigeBtn.className = 'btn-prestige';
+      prestigeBtn.innerHTML = `Prestige & Start Over<span class="btn-desc">Gain permanent bonuses for the next run</span>`;
+      prestigeBtn.addEventListener('click', () => {
+        this.engine.performPrestige();
+      });
+      buttons.appendChild(prestigeBtn);
+    }
+
+    const restartBtn = document.createElement('button');
+    restartBtn.className = 'btn-restart';
+    restartBtn.innerHTML = `Start Over<span class="btn-desc">${canPrestige ? 'Restart without prestige bonuses' : 'Begin a new adventure'}</span>`;
+    restartBtn.addEventListener('click', () => {
+      this.engine.startOver();
+    });
+    buttons.appendChild(restartBtn);
+
+    screen.appendChild(buttons);
+
+    return screen;
   }
 
   createHeader(state) {
@@ -83,9 +193,7 @@ export class GameUI {
         ? 'In Combat'
         : phase === 'safeRoom'
           ? 'Safe Room'
-          : phase === 'defeated'
-            ? 'Defeated'
-            : 'Exploring';
+          : 'Exploring';
 
     header.innerHTML = `
       <h1>DEEPLOOP</h1>
@@ -142,13 +250,6 @@ export class GameUI {
       content.appendChild(this.createEnemyList(room.enemies));
     } else if (state.gamePhase === 'safeRoom') {
       content.appendChild(this.createSafeRoomContent(state));
-    } else if (state.gamePhase === 'defeated') {
-      content.innerHTML = `
-        <div class="defeat-message">
-          Your party has fallen.
-          <div class="sub">But the dungeon remains. Try again?</div>
-        </div>
-      `;
     } else if (room.type === 'treasure' && room.collected) {
       content.innerHTML = `<p>An empty treasure chest sits here.</p>`;
     } else if (room.type === 'event' && room.resolved) {
@@ -174,7 +275,6 @@ export class GameUI {
   }
 
   getRoomTitle(room, state) {
-    if (state.gamePhase === 'defeated') return 'Defeat';
     if (state.gamePhase === 'safeRoom') return 'Safe Room';
 
     switch (room.type) {
@@ -299,13 +399,6 @@ export class GameUI {
     const bar = document.createElement('div');
     bar.className = 'action-bar';
 
-    if (state.gamePhase === 'defeated') {
-      const btnRetry = document.createElement('button');
-      btnRetry.textContent = 'Try Again';
-      btnRetry.addEventListener('click', () => this.engine.retryAfterDefeat());
-      bar.appendChild(btnRetry);
-    }
-
     // Inventory
     const btnInv = document.createElement('button');
     btnInv.textContent = `Inventory (${state.inventory.items.length})`;
@@ -317,14 +410,6 @@ export class GameUI {
     btnAch.textContent = `Achievements (${state.achievements.length}/${ACHIEVEMENTS.length})`;
     btnAch.addEventListener('click', () => this.showAchievementsModal(state));
     bar.appendChild(btnAch);
-
-    // Prestige
-    const btnPres = document.createElement('button');
-    const prestigePts = calculatePrestigePoints(state.stats.highestFloor);
-    btnPres.textContent = `Prestige (${prestigePts} pts)`;
-    btnPres.disabled = state.stats.highestFloor < 5;
-    btnPres.addEventListener('click', () => this.showPrestigeModal(state));
-    bar.appendChild(btnPres);
 
     // Save
     const btnSave = document.createElement('button');
