@@ -1,5 +1,6 @@
 import { CLASSES, RACES, getEffectiveStat } from '../game/party.js';
 import { SKILLS, ACHIEVEMENTS, getPrestigeBonus, calculatePrestigePoints } from '../game/progression.js';
+import { canEquip, getEquipDelta } from '../game/dungeon.js';
 import { formatNumber } from '../utils/math.js';
 import { hasSave } from '../utils/save.js';
 
@@ -216,12 +217,13 @@ export class GameUI {
 
   createSafeRoomContent(state) {
     const container = document.createElement('div');
+    const shopCount = state.shop ? state.shop.length : 0;
     container.innerHTML = `
-      <p>The party rests in a safe room. What would you like to do?</p>
+      <p>The party rests in a safe room. A merchant has set up shop here.</p>
       <div class="safe-room-actions">
-        <button id="btn-continue">
-          Continue Deeper
-          <span class="btn-desc">Venture to the next floor</span>
+        <button id="btn-shop">
+          Visit Shop
+          <span class="btn-desc">Browse ${shopCount} items for sale</span>
         </button>
         <button id="btn-manage-inventory">
           Manage Equipment
@@ -231,18 +233,24 @@ export class GameUI {
           View Skills
           <span class="btn-desc">Check party skills and progression</span>
         </button>
+        <button id="btn-continue">
+          Continue Deeper
+          <span class="btn-desc">Venture to the next floor</span>
+        </button>
       </div>
     `;
 
     // Defer event binding
     setTimeout(() => {
       const btnCont = document.getElementById('btn-continue');
+      const btnShop = document.getElementById('btn-shop');
       const btnInv = document.getElementById('btn-manage-inventory');
       const btnSkills = document.getElementById('btn-view-skills');
 
       if (btnCont) btnCont.addEventListener('click', () => this.engine.continueExploring());
-      if (btnInv) btnInv.addEventListener('click', () => this.showInventoryModal(state));
-      if (btnSkills) btnSkills.addEventListener('click', () => this.showSkillsModal(state));
+      if (btnShop) btnShop.addEventListener('click', () => this.showShopModal(this.engine.state));
+      if (btnInv) btnInv.addEventListener('click', () => this.showInventoryModal(this.engine.state));
+      if (btnSkills) btnSkills.addEventListener('click', () => this.showSkillsModal(this.engine.state));
     }, 0);
 
     return container;
@@ -373,50 +381,143 @@ export class GameUI {
     }
   }
 
-  showInventoryModal(state) {
-    this.showModal('Inventory', (content) => {
-      if (state.inventory.items.length === 0) {
-        content.innerHTML = '<p style="color:var(--text-dim)">No items. Keep exploring!</p>';
+  formatItemStats(item) {
+    const parts = [];
+    if (item.atk) parts.push(`ATK ${item.atk > 0 ? '+' : ''}${item.atk}`);
+    if (item.def) parts.push(`DEF ${item.def > 0 ? '+' : ''}${item.def}`);
+    if (item.spd) parts.push(`SPD ${item.spd > 0 ? '+' : ''}${item.spd}`);
+    if (item.mag) parts.push(`MAG ${item.mag > 0 ? '+' : ''}${item.mag}`);
+    return parts.join('  ');
+  }
+
+  formatDelta(delta) {
+    const parts = [];
+    for (const stat of ['atk', 'def', 'spd', 'mag']) {
+      if (delta[stat] !== 0) {
+        const cls = delta[stat] > 0 ? 'stat-up' : 'stat-down';
+        const sign = delta[stat] > 0 ? '+' : '';
+        parts.push(`<span class="${cls}">${stat.toUpperCase()} ${sign}${delta[stat]}</span>`);
+      }
+    }
+    return parts.length > 0 ? parts.join(' ') : '<span class="stat-neutral">no change</span>';
+  }
+
+  createItemCharRow(char, item, actionLabel, onAction) {
+    const row = document.createElement('div');
+    row.className = 'item-char-row';
+
+    const eligible = canEquip(char, item);
+    const hasSlot = !char.equipment[item.slot];
+    const delta = getEquipDelta(char, item);
+    const firstName = char.name.split(' ')[0];
+
+    if (!eligible) {
+      const reason = [];
+      if (item.classReq && !item.classReq.includes(char.class)) reason.push(CLASSES[char.class].name);
+      if (item.levelReq && char.level < item.levelReq) reason.push(`Lv.${item.levelReq}`);
+      row.innerHTML = `
+        <span class="char-label">${firstName}</span>
+        <span class="equip-blocked">Can't use${reason.length ? ' (' + reason.join(', ') + ')' : ''}</span>
+      `;
+      row.classList.add('ineligible');
+      return row;
+    }
+
+    const slotLabel = hasSlot ? 'empty slot' : char.equipment[item.slot].name;
+    row.innerHTML = `
+      <span class="char-label">${firstName}</span>
+      <span class="slot-info">${hasSlot ? '<em>empty slot</em>' : slotLabel}</span>
+      <span class="delta-info">${this.formatDelta(delta)}</span>
+    `;
+
+    if (onAction) {
+      const btn = document.createElement('button');
+      btn.textContent = actionLabel;
+      btn.className = 'btn-small';
+      btn.addEventListener('click', () => onAction());
+      row.appendChild(btn);
+    }
+
+    return row;
+  }
+
+  showShopModal(state) {
+    this.showModal('Shop', (content) => {
+      const goldDiv = document.createElement('div');
+      goldDiv.className = 'shop-gold';
+      goldDiv.innerHTML = `Gold: <span class="value">${formatNumber(state.inventory.gold)}</span>`;
+      content.appendChild(goldDiv);
+
+      const shop = state.shop || [];
+      if (shop.length === 0) {
+        content.innerHTML += '<p style="color:var(--text-dim)">The merchant has nothing left to sell.</p>';
         return;
       }
 
-      for (const item of state.inventory.items) {
+      for (const item of shop) {
         const card = document.createElement('div');
-        card.className = 'item-card';
+        card.className = 'shop-item-card';
 
-        const statsArr = [];
-        if (item.atk) statsArr.push(`ATK +${item.atk}`);
-        if (item.def) statsArr.push(`DEF +${item.def}`);
-        if (item.spd) statsArr.push(`SPD +${item.spd}`);
-        if (item.mag) statsArr.push(`MAG +${item.mag}`);
+        const affordable = state.inventory.gold >= item.price;
 
-        card.innerHTML = `
+        // Item header
+        const header = document.createElement('div');
+        header.className = 'shop-item-header';
+        header.innerHTML = `
           <div>
             <span class="item-name item-tier-${item.tier}">${item.name}</span>
-            <span class="item-stats">${statsArr.join(' ')}</span>
+            <span class="item-slot-label">${item.slot}</span>
           </div>
-          <div>${item.slot}</div>
+          <span class="item-price${affordable ? '' : ' too-expensive'}">${item.price}g</span>
         `;
+        card.appendChild(header);
 
-        // Equip buttons per character
-        const btnContainer = document.createElement('div');
-        for (const char of state.party) {
-          const btn = document.createElement('button');
-          btn.textContent = char.name.split(' ')[0];
-          btn.style.fontSize = '0.7rem';
-          btn.style.padding = '6px 10px';
-          btn.addEventListener('click', () => {
-            this.engine.equipItemOnCharacter(char.id, item);
-            this.closeModal();
-            this.showInventoryModal(this.engine.state);
-          });
-          btnContainer.appendChild(btn);
+        // Item stats
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'item-stats-line';
+        statsDiv.textContent = this.formatItemStats(item);
+        card.appendChild(statsDiv);
+
+        // Requirements line
+        const reqs = [];
+        if (item.classReq) reqs.push(item.classReq.map((c) => CLASSES[c].name).join('/'));
+        if (item.levelReq) reqs.push(`Lv.${item.levelReq}+`);
+        if (reqs.length) {
+          const reqDiv = document.createElement('div');
+          reqDiv.className = 'item-req-line';
+          reqDiv.textContent = `Requires: ${reqs.join(', ')}`;
+          card.appendChild(reqDiv);
         }
-        card.appendChild(btnContainer);
+
+        // Per-character breakdown
+        const charRows = document.createElement('div');
+        charRows.className = 'item-char-rows';
+        for (const char of state.party) {
+          const row = this.createItemCharRow(char, item, null, null);
+          charRows.appendChild(row);
+        }
+        card.appendChild(charRows);
+
+        // Buy button
+        const buyBtn = document.createElement('button');
+        buyBtn.className = 'btn-buy';
+        buyBtn.textContent = affordable ? `Buy (${item.price}g)` : 'Not enough gold';
+        buyBtn.disabled = !affordable;
+        buyBtn.addEventListener('click', () => {
+          this.engine.buyItem(item);
+          this.closeModal();
+          this.showShopModal(this.engine.state);
+        });
+        card.appendChild(buyBtn);
+
         content.appendChild(card);
       }
+    });
+  }
 
-      // Show equipped items
+  showInventoryModal(state) {
+    this.showModal('Inventory', (content) => {
+      // Show equipped items first
       const section = document.createElement('div');
       section.className = 'modal-section';
       section.innerHTML = '<h3>Currently Equipped</h3>';
@@ -424,21 +525,88 @@ export class GameUI {
       for (const char of state.party) {
         const charDiv = document.createElement('div');
         charDiv.style.marginBottom = '12px';
-        charDiv.innerHTML = `<strong>${char.name}</strong>`;
+        charDiv.innerHTML = `<strong>${char.name}</strong> <span style="color:var(--text-dim);font-size:0.7rem">${CLASSES[char.class].name} Lv.${char.level}</span>`;
 
         for (const slot of ['weapon', 'armor', 'accessory']) {
           const item = char.equipment[slot];
           const slotDiv = document.createElement('div');
           slotDiv.className = 'equip-slot';
-          slotDiv.innerHTML = `
-            <span class="slot-name">${slot}</span>
-            ${item ? `<span class="slot-item">${item.name}</span>` : '<span class="slot-empty">empty</span>'}
-          `;
+          if (item) {
+            slotDiv.innerHTML = `
+              <span class="slot-name">${slot}</span>
+              <span class="slot-item">${item.name}</span>
+              <span class="item-stats" style="font-size:0.65rem">${this.formatItemStats(item)}</span>
+            `;
+          } else {
+            slotDiv.innerHTML = `
+              <span class="slot-name">${slot}</span>
+              <span class="slot-empty">empty</span>
+            `;
+          }
           charDiv.appendChild(slotDiv);
         }
         section.appendChild(charDiv);
       }
       content.appendChild(section);
+
+      // Unequipped items
+      const itemSection = document.createElement('div');
+      itemSection.className = 'modal-section';
+      itemSection.innerHTML = `<h3>Backpack (${state.inventory.items.length} items)</h3>`;
+
+      if (state.inventory.items.length === 0) {
+        itemSection.innerHTML += '<p style="color:var(--text-dim)">No items. Keep exploring!</p>';
+      }
+
+      for (const item of state.inventory.items) {
+        const card = document.createElement('div');
+        card.className = 'inv-item-card';
+
+        // Item header
+        const header = document.createElement('div');
+        header.className = 'shop-item-header';
+        header.innerHTML = `
+          <div>
+            <span class="item-name item-tier-${item.tier}">${item.name}</span>
+            <span class="item-slot-label">${item.slot}</span>
+          </div>
+        `;
+        card.appendChild(header);
+
+        // Item stats
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'item-stats-line';
+        statsDiv.textContent = this.formatItemStats(item);
+        card.appendChild(statsDiv);
+
+        // Requirements line
+        const reqs = [];
+        if (item.classReq) reqs.push(item.classReq.map((c) => CLASSES[c].name).join('/'));
+        if (item.levelReq) reqs.push(`Lv.${item.levelReq}+`);
+        if (reqs.length) {
+          const reqDiv = document.createElement('div');
+          reqDiv.className = 'item-req-line';
+          reqDiv.textContent = `Requires: ${reqs.join(', ')}`;
+          card.appendChild(reqDiv);
+        }
+
+        // Per-character equip options
+        const charRows = document.createElement('div');
+        charRows.className = 'item-char-rows';
+        for (const char of state.party) {
+          const row = this.createItemCharRow(char, item, 'Equip', () => {
+            this.engine.equipItemOnCharacter(char.id, item);
+            this.closeModal();
+            this.showInventoryModal(this.engine.state);
+          });
+          charRows.appendChild(row);
+        }
+        card.appendChild(charRows);
+
+        content.appendChild(card);
+      }
+
+      content.appendChild(itemSection);
     });
   }
 

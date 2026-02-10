@@ -6,7 +6,7 @@ import {
   healParty,
   RACES,
 } from './party.js';
-import { generateFloor } from './dungeon.js';
+import { generateFloor, generateShop } from './dungeon.js';
 import { resolveCombatTurn, checkCombatResult } from './combat.js';
 import {
   awardXP,
@@ -34,6 +34,7 @@ export function createInitialState() {
       gold: 0,
       items: [],
     },
+    shop: [],
     prestige: {
       level: 0,
       points: 0,
@@ -78,7 +79,8 @@ export class GameEngine {
     if (!saved) return false;
 
     this.state = saved;
-    // Restore buffs arrays if missing (from old saves)
+    // Restore missing fields from old saves
+    if (!this.state.shop) this.state.shop = [];
     for (const char of this.state.party) {
       if (!char.buffs) char.buffs = [];
     }
@@ -192,8 +194,9 @@ export class GameEngine {
 
       case 'safe':
         this.state.gamePhase = 'safeRoom';
+        this.state.shop = generateShop(this.state.dungeon.currentFloorNum, this.state.party);
         this.pause();
-        this.addLog('important', 'The party reaches a safe room. Time to regroup.');
+        this.addLog('important', 'The party reaches a safe room. A merchant awaits.');
         break;
     }
   }
@@ -369,8 +372,9 @@ export class GameEngine {
     if (floor.isBossFloor) {
       this.addLog('important', `Floor ${floor.number} cleared! Boss defeated!`);
       this.state.gamePhase = 'safeRoom';
+      this.state.shop = generateShop(nextFloorNum, this.state.party);
       this.pause();
-      this.addLog('important', 'The party finds a safe room to rest.');
+      this.addLog('important', 'The party finds a safe room. A merchant awaits.');
     }
 
     // Generate next floor
@@ -404,6 +408,18 @@ export class GameEngine {
       this.resume();
       this.addLog('info', `The party regroups and re-enters Floor ${floorNum}.`);
     }
+  }
+
+  buyItem(item) {
+    if (!this.state.shop.find((i) => i.id === item.id)) return false;
+    if (this.state.inventory.gold < item.price) return false;
+
+    this.state.inventory.gold -= item.price;
+    this.state.inventory.items.push(item);
+    this.state.shop = this.state.shop.filter((i) => i.id !== item.id);
+    this.addLog('gold', `Purchased ${item.name} for ${item.price} gold.`);
+    this.notify();
+    return true;
   }
 
   equipItemOnCharacter(charId, item) {
@@ -448,6 +464,7 @@ export class GameEngine {
       floor: generateFloor(1),
     };
     this.state.inventory = { gold: 0, items: [] };
+    this.state.shop = [];
     this.state.gamePhase = 'exploring';
     this.state.log = [];
 

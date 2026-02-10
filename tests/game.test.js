@@ -21,7 +21,7 @@ import {
   RACES,
   resetCharacterId,
 } from '../src/game/party.js';
-import { generateFloor, MONSTER_TYPES, BOSS_TYPES } from '../src/game/dungeon.js';
+import { generateFloor, generateShop, canEquip, getEquipDelta, MONSTER_TYPES, BOSS_TYPES, TREASURE_ITEMS } from '../src/game/dungeon.js';
 import { resolveCombatTurn, checkCombatResult } from '../src/game/combat.js';
 import {
   awardXP,
@@ -375,6 +375,137 @@ describe('Progression System', () => {
   });
 });
 
+describe('Item Requirements', () => {
+  beforeEach(() => {
+    resetCharacterId(1);
+  });
+
+  it('canEquip allows item with no restrictions', () => {
+    const char = createCharacter('warrior', 'human');
+    const item = { name: 'Ring', slot: 'accessory', tier: 1 };
+    expect(canEquip(char, item)).toBe(true);
+  });
+
+  it('canEquip checks class restriction', () => {
+    const warrior = createCharacter('warrior', 'human');
+    const mage = createCharacter('mage', 'human');
+    const item = { name: 'Staff', slot: 'weapon', classReq: ['mage', 'healer'] };
+    expect(canEquip(warrior, item)).toBe(false);
+    expect(canEquip(mage, item)).toBe(true);
+  });
+
+  it('canEquip checks level restriction', () => {
+    const char = createCharacter('warrior', 'human');
+    char.level = 3;
+    const item = { name: 'Blade', slot: 'weapon', levelReq: 5 };
+    expect(canEquip(char, item)).toBe(false);
+    char.level = 5;
+    expect(canEquip(char, item)).toBe(true);
+  });
+
+  it('canEquip checks both class and level', () => {
+    const mage = createCharacter('mage', 'human');
+    mage.level = 3;
+    const item = { name: 'Staff', slot: 'weapon', classReq: ['mage'], levelReq: 5 };
+    expect(canEquip(mage, item)).toBe(false);
+    mage.level = 5;
+    expect(canEquip(mage, item)).toBe(true);
+  });
+
+  it('getEquipDelta returns correct deltas for empty slot', () => {
+    const char = createCharacter('warrior', 'human');
+    const item = { name: 'Sword', slot: 'weapon', atk: 5, def: 0, spd: -1, mag: 0 };
+    const delta = getEquipDelta(char, item);
+    expect(delta.atk).toBe(5);
+    expect(delta.def).toBe(0);
+    expect(delta.spd).toBe(-1);
+    expect(delta.mag).toBe(0);
+  });
+
+  it('getEquipDelta returns correct deltas when replacing item', () => {
+    const char = createCharacter('warrior', 'human');
+    char.equipment.weapon = { name: 'Old Sword', slot: 'weapon', atk: 3, def: 0, spd: 0, mag: 0 };
+    const item = { name: 'New Sword', slot: 'weapon', atk: 5, def: 1, spd: 0, mag: 0 };
+    const delta = getEquipDelta(char, item);
+    expect(delta.atk).toBe(2);
+    expect(delta.def).toBe(1);
+    expect(delta.spd).toBe(0);
+    expect(delta.mag).toBe(0);
+  });
+});
+
+describe('Shop System', () => {
+  beforeEach(() => {
+    resetCharacterId(1);
+  });
+
+  it('generates shop with 3-5 items', () => {
+    const party = createParty(4);
+    const shop = generateShop(1, party);
+    expect(shop.length).toBeGreaterThanOrEqual(3);
+    expect(shop.length).toBeLessThanOrEqual(5);
+  });
+
+  it('shop items have unique IDs', () => {
+    const party = createParty(4);
+    const shop = generateShop(1, party);
+    const ids = shop.map((i) => i.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('shop items have prices', () => {
+    const party = createParty(4);
+    const shop = generateShop(1, party);
+    for (const item of shop) {
+      expect(item.price).toBeGreaterThan(0);
+    }
+  });
+
+  it('shop items respect floor tier limits', () => {
+    const party = createParty(4);
+    const shop1 = generateShop(1, party);
+    for (const item of shop1) {
+      expect(item.tier).toBeLessThanOrEqual(1);
+    }
+
+    const shop10 = generateShop(10, party);
+    for (const item of shop10) {
+      expect(item.tier).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('shop contains items usable by party', () => {
+    const party = createParty(4);
+    const shop = generateShop(1, party);
+    const usableCount = shop.filter((item) =>
+      party.some((char) => canEquip(char, item))
+    ).length;
+    expect(usableCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('all TREASURE_ITEMS have required fields', () => {
+    for (const item of TREASURE_ITEMS) {
+      expect(item.name).toBeTruthy();
+      expect(item.slot).toBeTruthy();
+      expect(item.tier).toBeGreaterThanOrEqual(1);
+      expect(item.tier).toBeLessThanOrEqual(4);
+      expect(item.price).toBeGreaterThan(0);
+      expect(['weapon', 'armor', 'accessory']).toContain(item.slot);
+    }
+  });
+
+  it('class-restricted items reference valid classes', () => {
+    const validClasses = Object.keys(CLASSES);
+    for (const item of TREASURE_ITEMS) {
+      if (item.classReq) {
+        for (const cls of item.classReq) {
+          expect(validClasses).toContain(cls);
+        }
+      }
+    }
+  });
+});
+
 describe('Game Engine State', () => {
   it('creates valid initial state', () => {
     resetCharacterId(1);
@@ -384,6 +515,7 @@ describe('Game Engine State', () => {
     expect(state.dungeon.currentFloorNum).toBe(1);
     expect(state.dungeon.floor).toBeDefined();
     expect(state.inventory.gold).toBe(0);
+    expect(state.shop).toEqual([]);
     expect(state.prestige.level).toBe(0);
     expect(state.achievements).toEqual([]);
     expect(state.gamePhase).toBe('exploring');

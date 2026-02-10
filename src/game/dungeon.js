@@ -1,4 +1,4 @@
-import { randInt, randChoice, floorScaling } from '../utils/math.js';
+import { randInt, randChoice, shuffle, floorScaling } from '../utils/math.js';
 
 const ROOM_TYPES = ['combat', 'combat', 'combat', 'treasure', 'event', 'rest'];
 
@@ -57,18 +57,51 @@ export const EVENT_TYPES = [
 ];
 
 export const TREASURE_ITEMS = [
-  { name: 'Rusty Sword', slot: 'weapon', atk: 3, def: 0, spd: 0, mag: 0, tier: 1 },
-  { name: 'Wooden Shield', slot: 'armor', atk: 0, def: 3, spd: 0, mag: 0, tier: 1 },
-  { name: 'Swift Boots', slot: 'accessory', atk: 0, def: 0, spd: 3, mag: 0, tier: 1 },
-  { name: 'Iron Blade', slot: 'weapon', atk: 6, def: 0, spd: 0, mag: 0, tier: 2 },
-  { name: 'Chain Mail', slot: 'armor', atk: 0, def: 6, spd: -1, mag: 0, tier: 2 },
-  { name: 'Magic Ring', slot: 'accessory', atk: 0, def: 0, spd: 0, mag: 5, tier: 2 },
-  { name: 'Flame Sword', slot: 'weapon', atk: 10, def: 0, spd: 0, mag: 3, tier: 3 },
-  { name: 'Plate Armor', slot: 'armor', atk: 0, def: 10, spd: -2, mag: 0, tier: 3 },
-  { name: 'Amulet of Speed', slot: 'accessory', atk: 2, def: 2, spd: 5, mag: 2, tier: 3 },
-  { name: 'Void Edge', slot: 'weapon', atk: 15, def: 0, spd: 2, mag: 5, tier: 4 },
-  { name: 'Dragon Scale', slot: 'armor', atk: 3, def: 15, spd: 0, mag: 3, tier: 4 },
-  { name: 'Crown of Stars', slot: 'accessory', atk: 5, def: 5, spd: 5, mag: 5, tier: 4 },
+  // Tier 1 weapons
+  { name: 'Rusty Sword', slot: 'weapon', atk: 3, def: 0, spd: 0, mag: 0, tier: 1, price: 30, classReq: ['warrior', 'rogue'] },
+  { name: 'Gnarled Staff', slot: 'weapon', atk: 1, def: 0, spd: 0, mag: 3, tier: 1, price: 30, classReq: ['mage', 'healer'] },
+  // Tier 1 armor
+  { name: 'Wooden Shield', slot: 'armor', atk: 0, def: 3, spd: 0, mag: 0, tier: 1, price: 30, classReq: ['warrior', 'healer'] },
+  { name: 'Leather Vest', slot: 'armor', atk: 0, def: 2, spd: 1, mag: 0, tier: 1, price: 30, classReq: ['rogue'] },
+  { name: 'Cloth Robe', slot: 'armor', atk: 0, def: 1, spd: 0, mag: 2, tier: 1, price: 30, classReq: ['mage', 'healer'] },
+  // Tier 1 accessories
+  { name: 'Swift Boots', slot: 'accessory', atk: 0, def: 0, spd: 3, mag: 0, tier: 1, price: 25 },
+  { name: 'Iron Ring', slot: 'accessory', atk: 2, def: 1, spd: 0, mag: 0, tier: 1, price: 25 },
+
+  // Tier 2 weapons
+  { name: 'Iron Blade', slot: 'weapon', atk: 6, def: 0, spd: 0, mag: 0, tier: 2, price: 80, classReq: ['warrior', 'rogue'] },
+  { name: 'Arcane Wand', slot: 'weapon', atk: 1, def: 0, spd: 1, mag: 6, tier: 2, price: 80, classReq: ['mage', 'healer'] },
+  // Tier 2 armor
+  { name: 'Chain Mail', slot: 'armor', atk: 0, def: 6, spd: -1, mag: 0, tier: 2, price: 80, classReq: ['warrior'] },
+  { name: 'Reinforced Leather', slot: 'armor', atk: 1, def: 4, spd: 1, mag: 0, tier: 2, price: 80, classReq: ['rogue'] },
+  { name: 'Enchanted Robe', slot: 'armor', atk: 0, def: 3, spd: 0, mag: 4, tier: 2, price: 80, classReq: ['mage', 'healer'] },
+  // Tier 2 accessories
+  { name: 'Magic Ring', slot: 'accessory', atk: 0, def: 0, spd: 0, mag: 5, tier: 2, price: 70 },
+  { name: 'War Pendant', slot: 'accessory', atk: 4, def: 1, spd: 0, mag: 0, tier: 2, price: 70, classReq: ['warrior'] },
+  { name: "Thief's Charm", slot: 'accessory', atk: 1, def: 0, spd: 4, mag: 0, tier: 2, price: 70, classReq: ['rogue'] },
+
+  // Tier 3 weapons
+  { name: 'Flame Sword', slot: 'weapon', atk: 10, def: 0, spd: 0, mag: 3, tier: 3, price: 200, classReq: ['warrior'], levelReq: 5 },
+  { name: 'Shadow Dagger', slot: 'weapon', atk: 8, def: 0, spd: 4, mag: 0, tier: 3, price: 200, classReq: ['rogue'], levelReq: 5 },
+  { name: 'Crystal Staff', slot: 'weapon', atk: 2, def: 0, spd: 0, mag: 10, tier: 3, price: 200, classReq: ['mage', 'healer'], levelReq: 5 },
+  // Tier 3 armor
+  { name: 'Plate Armor', slot: 'armor', atk: 0, def: 10, spd: -2, mag: 0, tier: 3, price: 200, classReq: ['warrior'], levelReq: 5 },
+  { name: 'Nightweave', slot: 'armor', atk: 2, def: 5, spd: 3, mag: 0, tier: 3, price: 200, classReq: ['rogue'], levelReq: 5 },
+  { name: 'Mystic Vestments', slot: 'armor', atk: 0, def: 5, spd: 0, mag: 7, tier: 3, price: 200, classReq: ['mage', 'healer'], levelReq: 5 },
+  // Tier 3 accessories
+  { name: 'Amulet of Speed', slot: 'accessory', atk: 2, def: 2, spd: 5, mag: 2, tier: 3, price: 180, levelReq: 4 },
+  { name: "Healer's Brooch", slot: 'accessory', atk: 0, def: 3, spd: 0, mag: 6, tier: 3, price: 180, classReq: ['healer'], levelReq: 4 },
+
+  // Tier 4 weapons
+  { name: 'Void Edge', slot: 'weapon', atk: 15, def: 0, spd: 2, mag: 5, tier: 4, price: 500, classReq: ['warrior'], levelReq: 8 },
+  { name: "Assassin's Blade", slot: 'weapon', atk: 12, def: 0, spd: 6, mag: 0, tier: 4, price: 500, classReq: ['rogue'], levelReq: 8 },
+  { name: 'Elder Staff', slot: 'weapon', atk: 3, def: 2, spd: 0, mag: 15, tier: 4, price: 500, classReq: ['mage', 'healer'], levelReq: 8 },
+  // Tier 4 armor
+  { name: 'Dragon Scale', slot: 'armor', atk: 3, def: 15, spd: 0, mag: 3, tier: 4, price: 500, classReq: ['warrior'], levelReq: 8 },
+  { name: 'Shadowcloak', slot: 'armor', atk: 4, def: 8, spd: 5, mag: 2, tier: 4, price: 500, classReq: ['rogue'], levelReq: 8 },
+  { name: 'Archmage Robes', slot: 'armor', atk: 0, def: 8, spd: 2, mag: 14, tier: 4, price: 500, classReq: ['mage', 'healer'], levelReq: 8 },
+  // Tier 4 accessories
+  { name: 'Crown of Stars', slot: 'accessory', atk: 5, def: 5, spd: 5, mag: 5, tier: 4, price: 450, levelReq: 7 },
 ];
 
 const FLOOR_DESCRIPTIONS = [
@@ -189,4 +222,75 @@ function generateTreasure(floorNum) {
   const available = TREASURE_ITEMS.filter((item) => item.tier <= maxTier);
   const item = randChoice(available);
   return { ...item, id: Date.now() + Math.random() };
+}
+
+/**
+ * Check if a character meets the requirements to equip an item.
+ */
+export function canEquip(char, item) {
+  if (item.classReq && !item.classReq.includes(char.class)) return false;
+  if (item.levelReq && char.level < item.levelReq) return false;
+  return true;
+}
+
+/**
+ * Get stat deltas from equipping an item on a character.
+ * Returns { atk, def, spd, mag } with positive = improvement.
+ */
+export function getEquipDelta(char, item) {
+  const current = char.equipment[item.slot];
+  const stats = ['atk', 'def', 'spd', 'mag'];
+  const delta = {};
+  for (const stat of stats) {
+    const gain = item[stat] || 0;
+    const lose = current ? (current[stat] || 0) : 0;
+    delta[stat] = gain - lose;
+  }
+  return delta;
+}
+
+/**
+ * Generate shop inventory for a given floor and party.
+ * Returns an array of items biased toward what the party can use.
+ */
+export function generateShop(floorNum, party) {
+  const maxTier = Math.min(4, 1 + Math.floor(floorNum / 5));
+  const available = TREASURE_ITEMS.filter((item) => item.tier <= maxTier);
+
+  // Split items into party-usable vs not
+  const usable = available.filter((item) =>
+    party.some((char) => canEquip(char, item))
+  );
+  const other = available.filter((item) =>
+    !party.some((char) => canEquip(char, item))
+  );
+
+  const shopSize = randInt(3, 5);
+  const items = [];
+  const used = new Set();
+
+  // At least 2 items should be usable by someone in the party
+  const usableCount = Math.min(usable.length, Math.max(2, shopSize - 1));
+  const shuffledUsable = shuffle(usable);
+  for (let i = 0; i < usableCount && items.length < shopSize; i++) {
+    const template = shuffledUsable[i];
+    const key = template.name + template.slot;
+    if (!used.has(key)) {
+      used.add(key);
+      items.push({ ...template, id: Date.now() + Math.random() + i });
+    }
+  }
+
+  // Fill remaining with any available items
+  const shuffledAll = shuffle([...usable, ...other]);
+  for (const template of shuffledAll) {
+    if (items.length >= shopSize) break;
+    const key = template.name + template.slot;
+    if (!used.has(key)) {
+      used.add(key);
+      items.push({ ...template, id: Date.now() + Math.random() + items.length });
+    }
+  }
+
+  return items;
 }

@@ -858,6 +858,139 @@ input {
   color: var(--text-dim);
 }
 
+/* Shop */
+.shop-gold {
+  font-size: 0.9rem;
+  color: var(--accent-gold);
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.shop-gold .value {
+  font-weight: bold;
+}
+
+.shop-item-card,
+.inv-item-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 8px 0;
+}
+
+.shop-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.item-slot-label {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  margin-left: 8px;
+}
+
+.item-price {
+  color: var(--accent-gold);
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.item-price.too-expensive {
+  color: var(--accent-red);
+}
+
+.item-stats-line {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.item-req-line {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-bottom: 6px;
+}
+
+.item-char-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 6px 0;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.item-char-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  padding: 3px 4px;
+  border-radius: 2px;
+}
+
+.item-char-row.ineligible {
+  opacity: 0.5;
+}
+
+.item-char-row .char-label {
+  color: var(--text-primary);
+  min-width: 60px;
+  font-weight: bold;
+}
+
+.item-char-row .equip-blocked {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.item-char-row .slot-info {
+  color: var(--text-secondary);
+  min-width: 80px;
+  font-size: 0.7rem;
+}
+
+.item-char-row .delta-info {
+  flex: 1;
+  font-size: 0.7rem;
+}
+
+.stat-up {
+  color: var(--accent-green);
+}
+
+.stat-down {
+  color: var(--accent-red);
+}
+
+.stat-neutral {
+  color: var(--text-dim);
+}
+
+.btn-small {
+  padding: 3px 8px !important;
+  font-size: 0.7rem !important;
+  margin: 0 !important;
+}
+
+.btn-buy {
+  width: 100%;
+  margin-top: 6px !important;
+  padding: 6px 12px !important;
+}
+
+.btn-buy:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Defeat screen */
 .defeat-message {
   text-align: center;
