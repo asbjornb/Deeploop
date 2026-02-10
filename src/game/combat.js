@@ -109,15 +109,41 @@ function executeCharacterTurn(char, party, enemies) {
 
   switch (skill.type) {
     case 'physical': {
-      const atk = getEffectiveStat(char, 'atk');
-      const power = skill.basePower + (charSkill ? (charSkill.level - 1) * 0.1 : 0);
+      let atk = getEffectiveStat(char, 'atk');
+      // Hybrid scaling (Paladin's Holy Strike adds portion of MAG)
+      if (skill.magScaling) {
+        atk += Math.floor(getEffectiveStat(char, 'mag') * skill.magScaling);
+      }
+      let power = skill.basePower + (charSkill ? (charSkill.level - 1) * 0.1 : 0);
+
+      // Missing HP scaling (Berserker's Rampage)
+      if (skill.missingHpScaling) {
+        const missingPct = 1 - (char.hp / char.maxHp);
+        power *= (1 + missingPct);
+      }
 
       if (skill.target === 'all') {
-        // AoE physical (Whirlwind)
+        // AoE physical (Whirlwind, Cleave, Rampage)
         for (const target of aliveEnemies) {
-          let dmg = calculateDamage(Math.floor(atk * power), target.def);
+          const targetDef = skill.ignoreDefense ? 0 : target.def;
+          let dmg = calculateDamage(Math.floor(atk * power), targetDef);
           target.hp = Math.max(0, target.hp - dmg);
           log.push({ type: 'damage', text: `${char.name}'s ${skill.name} hits ${target.name} for ${dmg} damage!` });
+          if (target.hp <= 0) {
+            log.push({ type: 'info', text: `${target.name} is defeated!` });
+          }
+        }
+      } else if (skill.target === 'multi') {
+        // Multi-hit physical (Monk's Flurry)
+        const hitCount = skill.hitCount || 2;
+        for (let i = 0; i < hitCount; i++) {
+          const remaining = aliveEnemies.filter((e) => e.hp > 0);
+          if (remaining.length === 0) break;
+          const target = randChoice(remaining);
+          const targetDef = skill.ignoreDefense ? 0 : target.def;
+          let dmg = calculateDamage(Math.floor(atk * power), targetDef);
+          target.hp = Math.max(0, target.hp - dmg);
+          log.push({ type: 'damage', text: `${char.name}'s ${skill.name} strikes ${target.name} for ${dmg} damage!` });
           if (target.hp <= 0) {
             log.push({ type: 'info', text: `${target.name} is defeated!` });
           }
@@ -125,7 +151,8 @@ function executeCharacterTurn(char, party, enemies) {
       } else {
         // Single target physical
         const target = action.target || randChoice(aliveEnemies);
-        let dmg = calculateDamage(Math.floor(atk * power), target.def);
+        const targetDef = skill.ignoreDefense ? 0 : target.def;
+        let dmg = calculateDamage(Math.floor(atk * power), targetDef);
 
         // Crit check (guaranteed or chance-based)
         const isCrit = skill.guaranteedCrit || (skill.critBonus && Math.random() < skill.critBonus);
@@ -155,6 +182,13 @@ function executeCharacterTurn(char, party, enemies) {
           log.push({ type: 'info', text: `${target.name} is poisoned!` });
         }
       }
+
+      // Self-damage (Berserker's Reckless Blow)
+      if (skill.selfDamage) {
+        const selfDmg = Math.floor(char.maxHp * skill.selfDamage);
+        char.hp = Math.max(1, char.hp - selfDmg);
+        log.push({ type: 'damage', text: `${char.name} takes ${selfDmg} recoil damage!` });
+      }
       break;
     }
 
@@ -163,12 +197,24 @@ function executeCharacterTurn(char, party, enemies) {
       const power = skill.basePower + (charSkill ? (charSkill.level - 1) * 0.1 : 0);
 
       if (skill.target === 'all') {
+        let totalDealt = 0;
         for (const target of aliveEnemies) {
           const dmg = calculateMagicDamage(Math.floor(mag * power), target.def);
           target.hp = Math.max(0, target.hp - dmg);
+          totalDealt += dmg;
           log.push({ type: 'damage', text: `${char.name}'s ${skill.name} hits ${target.name} for ${dmg} damage!` });
           if (target.hp <= 0) {
             log.push({ type: 'info', text: `${target.name} is defeated!` });
+          }
+        }
+        // AoE life steal (Soul Siphon)
+        if (skill.effect === 'life_steal' && totalDealt > 0) {
+          const healAmt = Math.floor(totalDealt * (skill.lifeStealRatio || 0.3));
+          const oldHp = char.hp;
+          char.hp = Math.min(char.maxHp, char.hp + healAmt);
+          const actualHeal = char.hp - oldHp;
+          if (actualHeal > 0) {
+            log.push({ type: 'heal', text: `${char.name} siphons ${actualHeal} HP!` });
           }
         }
       } else if (skill.target === 'multi') {
@@ -243,14 +289,36 @@ function executeCharacterTurn(char, party, enemies) {
             log.push({ type: 'heal', text: `${char.name}'s ${skill.name} restores ${actualHeal} HP to ${member.name}!` });
           }
         }
+      } else if (skill.target === 'self_heal') {
+        // Self percentage heal (Monk's Inner Peace)
+        const pct = skill.healPct || 0.3;
+        const healAmt = Math.floor(char.maxHp * pct);
+        const oldHp = char.hp;
+        char.hp = Math.min(char.maxHp, char.hp + healAmt);
+        const actualHeal = char.hp - oldHp;
+        if (actualHeal > 0) {
+          log.push({ type: 'heal', text: `${char.name} meditates and restores ${actualHeal} HP!` });
+        }
       } else {
         // Single target heal
         const target = action.target || aliveParty.reduce((a, b) => (a.hp / a.maxHp < b.hp / b.maxHp ? a : b));
-        const healAmt = Math.floor(mag * power);
-        const oldHp = target.hp;
-        target.hp = Math.min(target.maxHp, target.hp + healAmt);
-        const actualHeal = target.hp - oldHp;
-        log.push({ type: 'heal', text: `${char.name} heals ${target.name} for ${actualHeal} HP!` });
+
+        // Martyrdom - sacrifice own HP to fully heal ally
+        if (skill.selfDamagePct) {
+          const selfDmg = Math.floor(char.maxHp * skill.selfDamagePct);
+          char.hp = Math.max(1, char.hp - selfDmg);
+          log.push({ type: 'damage', text: `${char.name} sacrifices ${selfDmg} HP!` });
+          const oldHp = target.hp;
+          target.hp = target.maxHp;
+          const actualHeal = target.hp - oldHp;
+          log.push({ type: 'heal', text: `${char.name}'s sacrifice fully heals ${target.name} for ${actualHeal} HP!` });
+        } else {
+          const healAmt = Math.floor(mag * power);
+          const oldHp = target.hp;
+          target.hp = Math.min(target.maxHp, target.hp + healAmt);
+          const actualHeal = target.hp - oldHp;
+          log.push({ type: 'heal', text: `${char.name} heals ${target.name} for ${actualHeal} HP!` });
+        }
       }
       break;
     }
@@ -291,8 +359,19 @@ function executeCharacterTurn(char, party, enemies) {
       } else if (skill.target === 'self' && skill.effect === 'second_wind') {
         char.buffs.push({ stat: 'second_wind', amount: 1, turns: skill.duration, name: skill.name });
         log.push({ type: 'info', text: `${char.name} steels for a Second Wind!` });
+      } else if (skill.target === 'self' && skill.effect === 'death_pact') {
+        // Death Pact - sacrifice HP for MAG buff
+        const selfDmg = Math.floor(char.maxHp * (skill.selfDamagePct || 0.3));
+        char.hp = Math.max(1, char.hp - selfDmg);
+        const amount = Math.floor(skill.buffAmount * getEffectiveStat(char, 'mag'));
+        char.buffs.push({ stat: 'mag', amount, turns: skill.duration, name: skill.name });
+        log.push({ type: 'damage', text: `${char.name} sacrifices ${selfDmg} HP for dark power!` });
+        log.push({ type: 'info', text: `${char.name}'s MAG massively boosted!` });
+      } else if (skill.target === 'self' && skill.effect === 'undying') {
+        char.buffs.push({ stat: 'undying', amount: 1, turns: skill.duration, name: skill.name });
+        log.push({ type: 'info', text: `${char.name} enters an Undying Fury!` });
       } else if (skill.target === 'self' && skill.buffStat) {
-        // Generic self-buff (Fortify)
+        // Generic self-buff (Fortify, Blood Rage, Bone Shield)
         const amount = Math.floor(
           skill.buffAmount * getEffectiveStat(char, skill.buffStat)
         );
@@ -363,8 +442,16 @@ function executeEnemyTurn(enemy, party) {
   }
 
   if (target.hp <= 0) {
-    target.alive = false;
-    log.push({ type: 'important', text: `${target.name} has fallen!` });
+    // Undying Fury: survive lethal damage once
+    const undyingBuff = target.buffs.find((b) => b.stat === 'undying');
+    if (undyingBuff) {
+      target.hp = 1;
+      target.buffs = target.buffs.filter((b) => b !== undyingBuff);
+      log.push({ type: 'important', text: `${target.name}'s Undying Fury triggers! Survives with 1 HP!` });
+    } else {
+      target.alive = false;
+      log.push({ type: 'important', text: `${target.name} has fallen!` });
+    }
   }
 
   return log;
@@ -489,6 +576,136 @@ function chooseAction(char, party, enemies) {
       // Fireball as fallback
       if (char.mp >= SKILLS.fireball.mpCost) {
         return { skillId: 'fireball' };
+      }
+      return null;
+    }
+
+    case 'paladin': {
+      // Divine Aura if no party DEF buff
+      const hasDivineAura = aliveParty.some((c) => c.buffs.some((b) => b.name === 'Divine Aura'));
+      if (!hasDivineAura && char.mp >= SKILLS.divine_aura.mpCost) {
+        return { skillId: 'divine_aura' };
+      }
+      // Lay on Hands if any ally below 40% HP
+      const woundedAlly = aliveParty.find((c) => c.hp < c.maxHp * 0.4 && c !== char);
+      if (woundedAlly && char.mp >= SKILLS.lay_on_hands.mpCost) {
+        return { skillId: 'lay_on_hands', target: woundedAlly };
+      }
+      // Consecrate if multiple enemies
+      if (hasSkill(char, 'consecrate') && SKILLS.consecrate && enemies.length > 1 && char.mp >= SKILLS.consecrate.mpCost) {
+        return { skillId: 'consecrate' };
+      }
+      // Martyrdom if ally is critical and paladin has HP to spare
+      if (hasSkill(char, 'martyrdom') && SKILLS.martyrdom) {
+        const critAlly = aliveParty.find((c) => c.hp < c.maxHp * 0.2 && c !== char);
+        if (critAlly && char.hp > char.maxHp * 0.5) {
+          return { skillId: 'martyrdom', target: critAlly };
+        }
+      }
+      // Holy Strike
+      if (char.mp >= SKILLS.holy_strike.mpCost) {
+        const target = enemies.reduce((a, b) => (a.hp > b.hp ? a : b));
+        return { skillId: 'holy_strike', target };
+      }
+      return null;
+    }
+
+    case 'necromancer': {
+      // Bone Shield if low HP
+      if (char.hp < char.maxHp * 0.5 && char.mp >= SKILLS.bone_shield.mpCost) {
+        const hasShield = char.buffs.some((b) => b.name === 'Bone Shield');
+        if (!hasShield) {
+          return { skillId: 'bone_shield' };
+        }
+      }
+      // Death Pact if not already buffed and HP is high
+      if (hasSkill(char, 'death_pact') && SKILLS.death_pact && char.mp >= SKILLS.death_pact.mpCost) {
+        const hasPact = char.buffs.some((b) => b.stat === 'death_pact' || b.name === 'Death Pact');
+        if (!hasPact && char.hp > char.maxHp * 0.6) {
+          return { skillId: 'death_pact' };
+        }
+      }
+      // Soul Siphon AoE if multiple enemies and need healing
+      if (hasSkill(char, 'soul_siphon') && SKILLS.soul_siphon && enemies.length > 1 && char.mp >= SKILLS.soul_siphon.mpCost) {
+        if (char.hp < char.maxHp * 0.7) {
+          return { skillId: 'soul_siphon' };
+        }
+      }
+      // Drain Life if below half HP
+      if (char.hp < char.maxHp * 0.6 && char.mp >= SKILLS.drain_life.mpCost) {
+        const target = enemies.reduce((a, b) => (a.hp > b.hp ? a : b));
+        return { skillId: 'drain_life', target };
+      }
+      // Soul Bolt
+      if (char.mp >= SKILLS.soul_bolt.mpCost) {
+        const target = enemies.reduce((a, b) => (a.hp > b.hp ? a : b));
+        return { skillId: 'soul_bolt', target };
+      }
+      // Drain Life as fallback
+      if (char.mp >= SKILLS.drain_life.mpCost) {
+        const target = enemies.reduce((a, b) => (a.hp > b.hp ? a : b));
+        return { skillId: 'drain_life', target };
+      }
+      return null;
+    }
+
+    case 'berserker': {
+      // Undying Fury at start of combat
+      if (hasSkill(char, 'undying_fury') && SKILLS.undying_fury) {
+        const hasUndying = char.buffs.some((b) => b.stat === 'undying');
+        if (!hasUndying) {
+          return { skillId: 'undying_fury' };
+        }
+      }
+      // Blood Rage if not buffed
+      if (char.mp >= SKILLS.blood_rage.mpCost) {
+        const hasRage = char.buffs.some((b) => b.name === 'Blood Rage');
+        if (!hasRage) {
+          return { skillId: 'blood_rage' };
+        }
+      }
+      // Rampage AoE with missing HP scaling
+      if (hasSkill(char, 'rampage') && SKILLS.rampage && enemies.length > 1 && char.mp >= SKILLS.rampage.mpCost) {
+        if (char.hp < char.maxHp * 0.5) {
+          return { skillId: 'rampage' };
+        }
+      }
+      // Cleave if multiple enemies
+      if (enemies.length > 1 && char.mp >= SKILLS.cleave.mpCost) {
+        return { skillId: 'cleave' };
+      }
+      // Reckless Blow on strongest enemy
+      const target = enemies.reduce((a, b) => (a.hp > b.hp ? a : b));
+      return { skillId: 'reckless_blow', target };
+    }
+
+    case 'monk': {
+      // Tranquility if party is in danger
+      if (hasSkill(char, 'tranquility') && SKILLS.tranquility && char.mp >= SKILLS.tranquility.mpCost) {
+        const hurtCount = aliveParty.filter((c) => c.hp < c.maxHp * 0.3).length;
+        if (hurtCount >= 2) {
+          return { skillId: 'tranquility' };
+        }
+      }
+      // Inner Peace if low HP
+      if (char.hp < char.maxHp * 0.4 && char.mp >= SKILLS.inner_peace.mpCost) {
+        return { skillId: 'inner_peace' };
+      }
+      // Flurry if multiple enemies
+      if (enemies.length > 1 && char.mp >= SKILLS.flurry.mpCost) {
+        return { skillId: 'flurry' };
+      }
+      // Pressure Point on high-DEF target
+      if (hasSkill(char, 'pressure_point') && SKILLS.pressure_point && char.mp >= SKILLS.pressure_point.mpCost) {
+        const highDef = enemies.reduce((a, b) => (a.def > b.def ? a : b));
+        if (highDef.def > 10) {
+          return { skillId: 'pressure_point', target: highDef };
+        }
+      }
+      // Palm Strike
+      if (char.mp >= SKILLS.palm_strike.mpCost) {
+        const target = enemies.reduce((a, b) => (a.hp > b.hp ? a : b));
+        return { skillId: 'palm_strike', target };
       }
       return null;
     }

@@ -29,6 +29,38 @@ export const CLASSES = {
     growths: { hp: 5, mp: 4, atk: 0, def: 1, spd: 1, mag: 3 },
     skills: ['heal', 'bless', 'smite'],
   },
+  paladin: {
+    name: 'Paladin',
+    description: 'Faith is armor. Also, actual armor.',
+    baseStats: { hp: 40, mp: 15, atk: 10, def: 12, spd: 5, mag: 8 },
+    growths: { hp: 7, mp: 2, atk: 2, def: 3, spd: 0, mag: 2 },
+    skills: ['holy_strike', 'lay_on_hands', 'divine_aura'],
+    unlockReq: 'floor_50',
+  },
+  necromancer: {
+    name: 'Necromancer',
+    description: 'Death is just another resource to manage.',
+    baseStats: { hp: 22, mp: 35, atk: 2, def: 3, spd: 6, mag: 16 },
+    growths: { hp: 2, mp: 6, atk: 0, def: 0, spd: 1, mag: 5 },
+    skills: ['soul_bolt', 'drain_life', 'bone_shield'],
+    unlockReq: 'prestige_3',
+  },
+  berserker: {
+    name: 'Berserker',
+    description: 'Defense is for people who plan to survive.',
+    baseStats: { hp: 35, mp: 5, atk: 16, def: 3, spd: 10, mag: 1 },
+    growths: { hp: 6, mp: 0, atk: 4, def: 0, spd: 2, mag: 0 },
+    skills: ['reckless_blow', 'blood_rage', 'cleave'],
+    unlockReq: 'killer_500',
+  },
+  monk: {
+    name: 'Monk',
+    description: 'Punches things at the speed of enlightenment.',
+    baseStats: { hp: 32, mp: 12, atk: 9, def: 7, spd: 16, mag: 6 },
+    growths: { hp: 5, mp: 2, atk: 2, def: 1, spd: 4, mag: 1 },
+    skills: ['palm_strike', 'inner_peace', 'flurry'],
+    unlockReq: 'floor_100',
+  },
 };
 
 export const RACES = {
@@ -123,8 +155,16 @@ export function createCharacter(classId = null, raceId = null) {
   };
 }
 
-export function createParty(size = 4) {
-  const classIds = shuffle(Object.keys(CLASSES)).slice(0, size);
+export function getUnlockedClassIds(unlockedAchievements = []) {
+  return Object.keys(CLASSES).filter((id) => {
+    const cls = CLASSES[id];
+    return !cls.unlockReq || unlockedAchievements.includes(cls.unlockReq);
+  });
+}
+
+export function createParty(size = 4, unlockedAchievements = []) {
+  const available = getUnlockedClassIds(unlockedAchievements);
+  const classIds = shuffle(available).slice(0, size);
   return classIds.map((cls) => createCharacter(cls));
 }
 

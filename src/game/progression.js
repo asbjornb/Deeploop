@@ -114,6 +114,122 @@ export const SKILLS = {
     basePower: 1.5,
     description: 'Holy damage to one enemy.',
   },
+
+  // Paladin
+  holy_strike: {
+    name: 'Holy Strike',
+    type: 'physical',
+    target: 'single',
+    mpCost: 2,
+    basePower: 1.4,
+    magScaling: 0.3,
+    description: 'A strike infused with holy power.',
+  },
+  lay_on_hands: {
+    name: 'Lay on Hands',
+    type: 'heal',
+    target: 'single_ally',
+    mpCost: 5,
+    basePower: 1.3,
+    description: 'A powerful healing touch.',
+  },
+  divine_aura: {
+    name: 'Divine Aura',
+    type: 'buff',
+    target: 'party',
+    mpCost: 6,
+    buffStat: 'def',
+    buffAmount: 0.3,
+    duration: 4,
+    description: 'Shields the party with holy light.',
+  },
+
+  // Necromancer
+  soul_bolt: {
+    name: 'Soul Bolt',
+    type: 'magic',
+    target: 'single',
+    mpCost: 4,
+    basePower: 1.8,
+    description: 'Tears at the target with dark energy.',
+  },
+  drain_life: {
+    name: 'Drain Life',
+    type: 'magic',
+    target: 'single',
+    mpCost: 5,
+    basePower: 1.3,
+    effect: 'life_steal',
+    lifeStealRatio: 0.5,
+    description: 'Steals life from the target.',
+  },
+  bone_shield: {
+    name: 'Bone Shield',
+    type: 'buff',
+    target: 'self',
+    mpCost: 4,
+    buffStat: 'def',
+    buffAmount: 0.5,
+    duration: 3,
+    description: 'Surrounds self with a barrier of bones.',
+  },
+
+  // Berserker
+  reckless_blow: {
+    name: 'Reckless Blow',
+    type: 'physical',
+    target: 'single',
+    mpCost: 0,
+    basePower: 2.2,
+    selfDamage: 0.1,
+    description: 'Devastating hit. Hurts yourself too.',
+  },
+  blood_rage: {
+    name: 'Blood Rage',
+    type: 'buff',
+    target: 'self',
+    mpCost: 2,
+    buffStat: 'atk',
+    buffAmount: 0.5,
+    duration: 4,
+    description: 'Fury made physical. Massively boosts ATK.',
+  },
+  cleave: {
+    name: 'Cleave',
+    type: 'physical',
+    target: 'all',
+    mpCost: 3,
+    basePower: 1.3,
+    description: 'Slash through all enemies.',
+  },
+
+  // Monk
+  palm_strike: {
+    name: 'Palm Strike',
+    type: 'physical',
+    target: 'single',
+    mpCost: 1,
+    basePower: 1.6,
+    effect: 'stun',
+    description: 'Focused strike. May stun.',
+  },
+  inner_peace: {
+    name: 'Inner Peace',
+    type: 'heal',
+    target: 'self_heal',
+    mpCost: 3,
+    healPct: 0.3,
+    description: 'Meditate briefly. Restore 30% HP.',
+  },
+  flurry: {
+    name: 'Flurry',
+    type: 'physical',
+    target: 'multi',
+    mpCost: 4,
+    basePower: 0.8,
+    hitCount: 3,
+    description: 'Three rapid strikes on random enemies.',
+  },
 };
 
 /**
@@ -193,11 +309,83 @@ export const LEARNABLE_SKILLS = [
     description: 'Magic damage; heal self for 50% dealt. Requires: Veteran.',
   },
 
+  // Paladin skills
+  {
+    skillId: 'consecrate',
+    name: 'Consecrate',
+    classes: ['paladin'],
+    cost: 3,
+    achievementReq: null,
+    description: 'Holy AoE. Damages all enemies with sacred fire.',
+  },
+  {
+    skillId: 'martyrdom',
+    name: 'Martyrdom',
+    classes: ['paladin'],
+    cost: 4,
+    achievementReq: 'floor_25',
+    description: 'Sacrifice HP to fully heal an ally. Requires: Deep Diver.',
+  },
+
+  // Necromancer skills
+  {
+    skillId: 'soul_siphon',
+    name: 'Soul Siphon',
+    classes: ['necromancer'],
+    cost: 3,
+    achievementReq: null,
+    description: 'AoE magic damage that heals self for each enemy hit.',
+  },
+  {
+    skillId: 'death_pact',
+    name: 'Death Pact',
+    classes: ['necromancer'],
+    cost: 4,
+    achievementReq: 'deaths_10',
+    description: 'Massively boost MAG at the cost of max HP. Requires: Persistent.',
+  },
+
+  // Berserker skills
+  {
+    skillId: 'rampage',
+    name: 'Rampage',
+    classes: ['berserker'],
+    cost: 3,
+    achievementReq: null,
+    description: 'Strike all enemies. Damage increases with missing HP.',
+  },
+  {
+    skillId: 'undying_fury',
+    name: 'Undying Fury',
+    classes: ['berserker'],
+    cost: 4,
+    achievementReq: 'killer_100',
+    description: 'Survive lethal damage once per combat with 1 HP. Requires: Centurion.',
+  },
+
+  // Monk skills
+  {
+    skillId: 'pressure_point',
+    name: 'Pressure Point',
+    classes: ['monk'],
+    cost: 3,
+    achievementReq: null,
+    description: 'Single target. Ignores defense.',
+  },
+  {
+    skillId: 'tranquility',
+    name: 'Tranquility',
+    classes: ['monk'],
+    cost: 4,
+    achievementReq: 'veteran',
+    description: 'Full party dodge for 1 turn. Requires: Veteran.',
+  },
+
   // Cross-class skills (any class can learn)
   {
     skillId: 'rally',
     name: 'Rally',
-    classes: ['warrior', 'mage', 'rogue', 'healer'],
+    classes: ['warrior', 'mage', 'rogue', 'healer', 'paladin', 'necromancer', 'berserker', 'monk'],
     cost: 3,
     achievementReq: 'deaths_10',
     description: 'Heal entire party for 15% max HP. Requires: Persistent.',
@@ -205,7 +393,7 @@ export const LEARNABLE_SKILLS = [
   {
     skillId: 'second_wind',
     name: 'Second Wind',
-    classes: ['warrior', 'mage', 'rogue', 'healer'],
+    classes: ['warrior', 'mage', 'rogue', 'healer', 'paladin', 'necromancer', 'berserker', 'monk'],
     cost: 3,
     achievementReq: 'floor_25',
     description: 'Self-buff: auto-heal 25% HP when below 20%. Once per combat. Requires: Deep Diver.',
@@ -285,6 +473,85 @@ export const LEARNABLE_SKILL_DEFS = {
     effect: 'life_steal',
     lifeStealRatio: 0.5,
     description: 'Magic damage. Heals self for half dealt.',
+  },
+  // Paladin learnable
+  consecrate: {
+    name: 'Consecrate',
+    type: 'magic',
+    target: 'all',
+    mpCost: 7,
+    basePower: 1.2,
+    description: 'Holy fire damages all enemies.',
+  },
+  martyrdom: {
+    name: 'Martyrdom',
+    type: 'heal',
+    target: 'single_ally',
+    mpCost: 0,
+    selfDamagePct: 0.4,
+    basePower: 99,
+    description: 'Sacrifice 40% HP to fully heal an ally.',
+  },
+  // Necromancer learnable
+  soul_siphon: {
+    name: 'Soul Siphon',
+    type: 'magic',
+    target: 'all',
+    mpCost: 8,
+    basePower: 0.9,
+    effect: 'life_steal',
+    lifeStealRatio: 0.3,
+    description: 'Dark AoE. Heals self for each enemy hit.',
+  },
+  death_pact: {
+    name: 'Death Pact',
+    type: 'buff',
+    target: 'self',
+    mpCost: 5,
+    effect: 'death_pact',
+    buffStat: 'mag',
+    buffAmount: 0.8,
+    duration: 5,
+    selfDamagePct: 0.3,
+    description: 'Sacrifice 30% max HP. Massively boost MAG.',
+  },
+  // Berserker learnable
+  rampage: {
+    name: 'Rampage',
+    type: 'physical',
+    target: 'all',
+    mpCost: 2,
+    basePower: 1.0,
+    missingHpScaling: true,
+    description: 'AoE that hits harder the lower your HP.',
+  },
+  undying_fury: {
+    name: 'Undying Fury',
+    type: 'buff',
+    target: 'self',
+    mpCost: 0,
+    effect: 'undying',
+    duration: 99,
+    description: 'Survive one lethal hit with 1 HP.',
+  },
+  // Monk learnable
+  pressure_point: {
+    name: 'Pressure Point',
+    type: 'physical',
+    target: 'single',
+    mpCost: 3,
+    basePower: 1.5,
+    ignoreDefense: true,
+    description: 'Precise strike that ignores defense.',
+  },
+  tranquility: {
+    name: 'Tranquility',
+    type: 'buff',
+    target: 'party',
+    mpCost: 6,
+    effect: 'dodge',
+    duration: 1,
+    description: 'Entire party dodges for 1 turn.',
   },
   rally: {
     name: 'Rally',
@@ -556,6 +823,34 @@ export const ACHIEVEMENTS = [
     condition: (stats) => stats.deaths >= 10,
     reward: '+10% HP',
   },
+  {
+    id: 'floor_50',
+    name: 'Abyssal Explorer',
+    description: 'Reach floor 50.',
+    condition: (stats) => stats.highestFloor >= 50,
+    reward: 'Unlocks the Paladin class.',
+  },
+  {
+    id: 'floor_100',
+    name: 'Rock Bottom',
+    description: 'Reach floor 100. There is no deeper.',
+    condition: (stats) => stats.highestFloor >= 100,
+    reward: 'Unlocks the Monk class.',
+  },
+  {
+    id: 'prestige_3',
+    name: 'Eternal Return',
+    description: 'Prestige 3 times. Some loops run deeper.',
+    condition: (stats) => stats.totalPrestige >= 3,
+    reward: 'Unlocks the Necromancer class.',
+  },
+  {
+    id: 'killer_500',
+    name: 'Slaughter',
+    description: 'Defeat 500 monsters. The dungeon knows your name.',
+    condition: (stats) => stats.monstersKilled >= 500,
+    reward: 'Unlocks the Berserker class.',
+  },
 ];
 
 /**
@@ -612,6 +907,22 @@ export function getAchievementBonuses(unlockedIds) {
         break;
       case 'deaths_10':
         bonuses.hp += 0.1;
+        break;
+      case 'floor_50':
+        bonuses.hp += 0.1;
+        bonuses.def += 0.05;
+        break;
+      case 'floor_100':
+        bonuses.spd += 0.1;
+        bonuses.hp += 0.05;
+        break;
+      case 'prestige_3':
+        bonuses.mag += 0.1;
+        bonuses.hp += 0.05;
+        break;
+      case 'killer_500':
+        bonuses.atk += 0.1;
+        bonuses.hp += 0.05;
         break;
     }
   }

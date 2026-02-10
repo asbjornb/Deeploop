@@ -102,6 +102,38 @@ export const TREASURE_ITEMS = [
   { name: 'Archmage Robes', slot: 'armor', atk: 0, def: 8, spd: 2, mag: 14, tier: 4, price: 500, classReq: ['mage', 'healer'], levelReq: 8 },
   // Tier 4 accessories
   { name: 'Crown of Stars', slot: 'accessory', atk: 5, def: 5, spd: 5, mag: 5, tier: 4, price: 450, levelReq: 7 },
+
+  // Paladin gear
+  { name: 'Blessed Mace', slot: 'weapon', atk: 7, def: 2, spd: 0, mag: 4, tier: 2, price: 90, classReq: ['paladin'] },
+  { name: 'Holy Avenger', slot: 'weapon', atk: 12, def: 3, spd: 0, mag: 8, tier: 3, price: 220, classReq: ['paladin'], levelReq: 5 },
+  { name: 'Seraph Blade', slot: 'weapon', atk: 16, def: 4, spd: 0, mag: 12, tier: 4, price: 520, classReq: ['paladin'], levelReq: 8 },
+  { name: 'Templar Shield', slot: 'armor', atk: 0, def: 8, spd: -1, mag: 2, tier: 2, price: 90, classReq: ['paladin'] },
+  { name: 'Crusader Plate', slot: 'armor', atk: 2, def: 13, spd: -2, mag: 4, tier: 3, price: 220, classReq: ['paladin'], levelReq: 5 },
+  { name: 'Radiant Aegis', slot: 'armor', atk: 3, def: 18, spd: 0, mag: 6, tier: 4, price: 520, classReq: ['paladin'], levelReq: 8 },
+
+  // Necromancer gear
+  { name: 'Bone Wand', slot: 'weapon', atk: 0, def: 0, spd: 1, mag: 8, tier: 2, price: 90, classReq: ['necromancer'] },
+  { name: 'Skull Staff', slot: 'weapon', atk: 1, def: 0, spd: 0, mag: 13, tier: 3, price: 220, classReq: ['necromancer'], levelReq: 5 },
+  { name: 'Lich Scepter', slot: 'weapon', atk: 2, def: 0, spd: 2, mag: 18, tier: 4, price: 520, classReq: ['necromancer'], levelReq: 8 },
+  { name: 'Shroud of Shadows', slot: 'armor', atk: 0, def: 2, spd: 1, mag: 5, tier: 2, price: 85, classReq: ['necromancer'] },
+  { name: 'Deathweave Robe', slot: 'armor', atk: 0, def: 4, spd: 1, mag: 9, tier: 3, price: 210, classReq: ['necromancer'], levelReq: 5 },
+  { name: 'Voidcloak', slot: 'armor', atk: 0, def: 6, spd: 2, mag: 16, tier: 4, price: 510, classReq: ['necromancer'], levelReq: 8 },
+
+  // Berserker gear
+  { name: 'Jagged Axe', slot: 'weapon', atk: 9, def: 0, spd: 1, mag: 0, tier: 2, price: 85, classReq: ['berserker'] },
+  { name: 'Gore Cleaver', slot: 'weapon', atk: 14, def: -1, spd: 2, mag: 0, tier: 3, price: 210, classReq: ['berserker'], levelReq: 5 },
+  { name: 'Worldbreaker', slot: 'weapon', atk: 20, def: -2, spd: 3, mag: 0, tier: 4, price: 510, classReq: ['berserker'], levelReq: 8 },
+  { name: 'Spiked Hide', slot: 'armor', atk: 3, def: 3, spd: 1, mag: 0, tier: 2, price: 80, classReq: ['berserker'] },
+  { name: 'Warchief Harness', slot: 'armor', atk: 5, def: 5, spd: 2, mag: 0, tier: 3, price: 200, classReq: ['berserker'], levelReq: 5 },
+  { name: 'Bloodsteel Armor', slot: 'armor', atk: 7, def: 10, spd: 3, mag: 0, tier: 4, price: 500, classReq: ['berserker'], levelReq: 8 },
+
+  // Monk gear
+  { name: 'Iron Fists', slot: 'weapon', atk: 5, def: 1, spd: 3, mag: 0, tier: 2, price: 80, classReq: ['monk'] },
+  { name: 'Tiger Claws', slot: 'weapon', atk: 8, def: 1, spd: 5, mag: 1, tier: 3, price: 200, classReq: ['monk'], levelReq: 5 },
+  { name: 'Dragon Fists', slot: 'weapon', atk: 12, def: 2, spd: 8, mag: 2, tier: 4, price: 500, classReq: ['monk'], levelReq: 8 },
+  { name: 'Gi of the Wind', slot: 'armor', atk: 1, def: 3, spd: 4, mag: 0, tier: 2, price: 80, classReq: ['monk'] },
+  { name: 'Flowing Silk', slot: 'armor', atk: 2, def: 5, spd: 6, mag: 1, tier: 3, price: 200, classReq: ['monk'], levelReq: 5 },
+  { name: 'Grandmaster Vestments', slot: 'armor', atk: 4, def: 8, spd: 10, mag: 3, tier: 4, price: 500, classReq: ['monk'], levelReq: 8 },
 ];
 
 const FLOOR_DESCRIPTIONS = [
