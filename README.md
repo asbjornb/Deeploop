@@ -1,6 +1,8 @@
 # Deeploop
 *A minimalist incremental RPG adventure*
 
+**Play now:** https://deeploop.pages.dev
+
 ## Game Description
 
 Deeploop is a minimalist incremental RPG where you build a party of adventurers who automatically explore a deepening dungeon, battle monsters, and gather loot. Between floors, you pause in safe rooms to tweak strategy, assign skill points, and equip gear. 
