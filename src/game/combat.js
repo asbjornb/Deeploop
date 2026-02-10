@@ -26,6 +26,8 @@ export function resolveCombatTurn(party, enemies) {
   // Sort by speed (highest first), with random tiebreaker
   combatants.sort((a, b) => b.spd - a.spd || Math.random() - 0.5);
 
+  let momentum = false;
+
   for (const combatant of combatants) {
     // Skip if dead (may have died this turn)
     if (combatant.type === 'party' && (!combatant.entity.alive || combatant.entity.hp <= 0))
@@ -43,11 +45,29 @@ export function resolveCombatTurn(party, enemies) {
     }
 
     if (combatant.type === 'party') {
+      // Apply momentum buff from a previous kill
+      let momentumBuff = null;
+      if (momentum) {
+        const amt = Math.max(1, Math.floor(getEffectiveStat(combatant.entity, 'atk') * 0.2));
+        momentumBuff = { stat: 'atk', amount: amt, turns: 99, name: '_momentum' };
+        combatant.entity.buffs.push(momentumBuff);
+        log.push({ type: 'info', text: `${combatant.entity.name} is emboldened!` });
+      }
+
+      const enemiesBefore = enemies.filter((e) => e.hp > 0).length;
       const entries = executeCharacterTurn(combatant.entity, party, enemies);
       log.push(...entries);
+      const enemiesAfter = enemies.filter((e) => e.hp > 0).length;
+      momentum = enemiesAfter < enemiesBefore;
+
+      // Remove temporary momentum buff
+      if (momentumBuff) {
+        combatant.entity.buffs = combatant.entity.buffs.filter((b) => b !== momentumBuff);
+      }
     } else {
       const entries = executeEnemyTurn(combatant.entity, party);
       log.push(...entries);
+      momentum = false;
     }
 
     // Check if combat is over
@@ -390,22 +410,22 @@ function executeCharacterTurn(char, party, enemies) {
   return log;
 }
 
-function executeEnemyTurn(enemy, party) {
-  const log = [];
-  const aliveParty = party.filter((c) => c.alive && c.hp > 0);
-  if (aliveParty.length === 0) return log;
-
-  const target = randChoice(aliveParty);
-
+/**
+ * Apply enemy damage to a party member target, handling dodge, dwarf reduction,
+ * mana shield, and post-damage survival effects.
+ * @param {string} dmgText - Damage log text with {dmg} placeholder for actual damage dealt.
+ * @returns {{ dodged: boolean, damage: number }}
+ */
+function applyEnemyDamage(enemy, target, rawDmg, log, dmgText) {
   // Check for dodge buff
   const dodgeBuff = target.buffs.find((b) => b.stat === 'dodge');
   if (dodgeBuff) {
     log.push({ type: 'info', text: `${target.name} dodges ${enemy.name}'s attack!` });
     target.buffs = target.buffs.filter((b) => b !== dodgeBuff);
-    return log;
+    return { dodged: true, damage: 0 };
   }
 
-  let dmg = calculateDamage(enemy.atk, getEffectiveStat(target, 'def'));
+  let dmg = rawDmg;
 
   // Dwarf damage reduction
   if (target.race === 'dwarf') {
@@ -429,9 +449,17 @@ function executeEnemyTurn(enemy, party) {
 
   target.hp = Math.max(0, target.hp - dmg);
   if (dmg > 0) {
-    log.push({ type: 'damage', text: `${enemy.name} attacks ${target.name} for ${dmg} damage!` });
+    log.push({ type: 'damage', text: dmgText.replace('{dmg}', dmg) });
   }
 
+  checkSurvivalEffects(target, log);
+  return { dodged: false, damage: dmg };
+}
+
+/**
+ * Check for post-damage survival effects: Second Wind, Undying Fury, close calls.
+ */
+function checkSurvivalEffects(target, log) {
   // Second Wind: auto-heal when below 20% HP, once per combat
   const secondWind = target.buffs.find((b) => b.stat === 'second_wind');
   if (secondWind && target.hp > 0 && target.hp < target.maxHp * 0.2) {
@@ -452,7 +480,157 @@ function executeEnemyTurn(enemy, party) {
       target.alive = false;
       log.push({ type: 'important', text: `${target.name} has fallen!` });
     }
+  } else if (target.hp > 0 && target.hp < target.maxHp * 0.1) {
+    log.push({ type: 'info', text: `${target.name} barely holds on!` });
   }
+}
+
+/**
+ * Execute an enemy's special ability.
+ */
+function executeEnemyAbility(enemy, ability, aliveParty, log) {
+  log.push({ type: 'important', text: `${enemy.name} uses ${ability.name}!` });
+
+  switch (ability.type) {
+    case 'aoe': {
+      for (const target of [...aliveParty]) {
+        if (!target.alive || target.hp <= 0) continue;
+        const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+        applyEnemyDamage(enemy, target, rawDmg, log, `${target.name} takes {dmg} damage!`);
+      }
+      break;
+    }
+
+    case 'multi': {
+      const hits = ability.hits || 2;
+      for (let i = 0; i < hits; i++) {
+        const alive = aliveParty.filter((c) => c.alive && c.hp > 0);
+        if (alive.length === 0) break;
+        const target = randChoice(alive);
+        const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+        applyEnemyDamage(enemy, target, rawDmg, log, `${enemy.name} strikes ${target.name} for {dmg} damage!`);
+      }
+      break;
+    }
+
+    case 'snipe': {
+      const weakest = aliveParty.reduce((a, b) => (a.hp / a.maxHp < b.hp / b.maxHp ? a : b));
+      const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(weakest, 'def'));
+      applyEnemyDamage(enemy, weakest, rawDmg, log,
+        `${enemy.name} targets the wounded ${weakest.name} for {dmg} damage!`);
+      break;
+    }
+
+    case 'heavy': {
+      const target = randChoice(aliveParty);
+      const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+      applyEnemyDamage(enemy, target, rawDmg, log,
+        `${enemy.name} crushes ${target.name} for {dmg} damage!`);
+      break;
+    }
+
+    case 'single_stun': {
+      const target = randChoice(aliveParty);
+      const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+      const result = applyEnemyDamage(enemy, target, rawDmg, log,
+        `${enemy.name} hits ${target.name} for {dmg} damage!`);
+      if (!result.dodged && target.alive && target.hp > 0 && Math.random() < ability.stunChance) {
+        target.stunned = true;
+        log.push({ type: 'info', text: `${target.name} is stunned!` });
+      }
+      break;
+    }
+
+    case 'single_debuff': {
+      const target = randChoice(aliveParty);
+      const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+      const result = applyEnemyDamage(enemy, target, rawDmg, log,
+        `${enemy.name} hits ${target.name} for {dmg} damage!`);
+      if (!result.dodged && target.alive && target.hp > 0) {
+        const debuffAmt = Math.max(1, Math.floor(enemy.atk * ability.debuffRatio));
+        target.buffs.push({
+          stat: ability.debuffStat, amount: -debuffAmt,
+          turns: ability.debuffDuration, name: ability.name,
+        });
+        log.push({ type: 'info', text: `${target.name}'s ${ability.debuffStat.toUpperCase()} is reduced!` });
+      }
+      break;
+    }
+
+    case 'drain': {
+      const target = randChoice(aliveParty);
+      const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+      const result = applyEnemyDamage(enemy, target, rawDmg, log,
+        `${enemy.name} blasts ${target.name} for {dmg} damage!`);
+      if (!result.dodged && result.damage > 0) {
+        const healAmt = Math.floor(result.damage * ability.healRatio);
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmt);
+        log.push({ type: 'heal', text: `${enemy.name} drains ${healAmt} HP!` });
+      }
+      break;
+    }
+
+    case 'aoe_debuff': {
+      for (const target of [...aliveParty]) {
+        if (!target.alive || target.hp <= 0) continue;
+        const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+        const result = applyEnemyDamage(enemy, target, rawDmg, log, `${target.name} takes {dmg} damage!`);
+        if (!result.dodged && target.alive && target.hp > 0) {
+          const debuffAmt = Math.max(1, Math.floor(enemy.atk * ability.debuffRatio));
+          target.buffs.push({
+            stat: ability.debuffStat, amount: -debuffAmt,
+            turns: ability.debuffDuration, name: ability.name,
+          });
+        }
+      }
+      const surviving = aliveParty.filter((c) => c.alive && c.hp > 0);
+      if (surviving.length > 0) {
+        log.push({ type: 'info', text: `The party's ${ability.debuffStat.toUpperCase()} is reduced!` });
+      }
+      break;
+    }
+
+    case 'aoe_stun': {
+      for (const target of [...aliveParty]) {
+        if (!target.alive || target.hp <= 0) continue;
+        const rawDmg = calculateDamage(Math.floor(enemy.atk * ability.power), getEffectiveStat(target, 'def'));
+        applyEnemyDamage(enemy, target, rawDmg, log, `${target.name} takes {dmg} damage!`);
+        if (target.alive && target.hp > 0 && Math.random() < ability.stunChance) {
+          target.stunned = true;
+          log.push({ type: 'info', text: `${target.name} is stunned!` });
+        }
+      }
+      break;
+    }
+
+    default: {
+      // Fallback to basic attack
+      const target = randChoice(aliveParty);
+      const rawDmg = calculateDamage(enemy.atk, getEffectiveStat(target, 'def'));
+      applyEnemyDamage(enemy, target, rawDmg, log,
+        `${enemy.name} attacks ${target.name} for {dmg} damage!`);
+      break;
+    }
+  }
+
+  return log;
+}
+
+function executeEnemyTurn(enemy, party) {
+  const log = [];
+  const aliveParty = party.filter((c) => c.alive && c.hp > 0);
+  if (aliveParty.length === 0) return log;
+
+  // Check for special ability use
+  if (enemy.ability && Math.random() < enemy.ability.chance) {
+    return executeEnemyAbility(enemy, enemy.ability, aliveParty, log);
+  }
+
+  // Basic attack
+  const target = randChoice(aliveParty);
+  const rawDmg = calculateDamage(enemy.atk, getEffectiveStat(target, 'def'));
+  applyEnemyDamage(enemy, target, rawDmg, log,
+    `${enemy.name} attacks ${target.name} for {dmg} damage!`);
 
   return log;
 }
