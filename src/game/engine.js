@@ -5,6 +5,7 @@ import {
   restoreParty,
   healParty,
   RACES,
+  CLASSES,
 } from './party.js';
 import { generateFloor, generateShop } from './dungeon.js';
 import { resolveCombatTurn, checkCombatResult } from './combat.js';
@@ -403,7 +404,7 @@ export class GameEngine {
     if (this.state.gamePhase !== 'prestige') return;
 
     // Reset game without prestige bonuses
-    const party = createParty(4);
+    const party = createParty(4, this.state.achievements);
 
     // Still apply existing prestige bonuses from previous prestiges
     if (this.state.prestige.level > 0) {
@@ -494,7 +495,7 @@ export class GameEngine {
     this.state.stats.totalPrestige++;
 
     // Reset game but keep prestige, achievements, stats
-    const party = createParty(4);
+    const party = createParty(4, this.state.achievements);
 
     // Apply prestige stat bonuses
     const bonus = getPrestigeBonus(this.state.prestige.level);
