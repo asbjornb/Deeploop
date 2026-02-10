@@ -318,6 +318,7 @@ export class GameUI {
   createSafeRoomContent(state) {
     const container = document.createElement('div');
     const shopCount = state.shop ? state.shop.length : 0;
+    const logCount = state.log.length - (state.lastSafeRoomLogIndex || 0);
     container.innerHTML = `
       <p>The party rests in a safe room. A merchant has set up shop here.</p>
       <div class="safe-room-actions">
@@ -333,6 +334,10 @@ export class GameUI {
           Train Skills
           <span class="btn-desc">Spend skill points to upgrade or learn skills</span>
         </button>
+        <button id="btn-event-log">
+          Event Log
+          <span class="btn-desc">Review ${logCount} events since last safe room</span>
+        </button>
         <button id="btn-continue">
           Continue Deeper
           <span class="btn-desc">Venture to the next floor</span>
@@ -346,11 +351,13 @@ export class GameUI {
       const btnShop = document.getElementById('btn-shop');
       const btnInv = document.getElementById('btn-manage-inventory');
       const btnTrain = document.getElementById('btn-train-skills');
+      const btnLog = document.getElementById('btn-event-log');
 
       if (btnCont) btnCont.addEventListener('click', () => this.engine.continueExploring());
       if (btnShop) btnShop.addEventListener('click', () => this.showShopModal(this.engine.state));
       if (btnInv) btnInv.addEventListener('click', () => this.showInventoryModal(this.engine.state));
       if (btnTrain) btnTrain.addEventListener('click', () => this.showTrainSkillsModal(this.engine.state));
+      if (btnLog) btnLog.addEventListener('click', () => this.showEventLogModal(this.engine.state));
     }, 0);
 
     return container;
@@ -817,6 +824,28 @@ export class GameUI {
         `;
         content.appendChild(div);
       }
+    });
+  }
+
+  showEventLogModal(state) {
+    const startIndex = state.lastSafeRoomLogIndex || 0;
+    const entries = state.log.slice(startIndex);
+
+    this.showModal('Event Log', (content) => {
+      if (entries.length === 0) {
+        content.innerHTML = '<p style="color:var(--text-dim)">Nothing has happened yet.</p>';
+        return;
+      }
+
+      const logList = document.createElement('div');
+      logList.className = 'event-log-list';
+      for (const entry of entries) {
+        const line = document.createElement('div');
+        line.className = `event-log-entry ${entry.type}`;
+        line.textContent = `> ${entry.text}`;
+        logList.appendChild(line);
+      }
+      content.appendChild(logList);
     });
   }
 
