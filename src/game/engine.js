@@ -141,8 +141,8 @@ export class GameEngine {
       case 'safeRoom':
         // Paused, waiting for player
         break;
-      case 'defeated':
-        // Paused, waiting for player
+      case 'prestige':
+        // Paused, waiting for player to start over
         break;
     }
 
@@ -271,11 +271,10 @@ export class GameEngine {
   }
 
   handleDefeat() {
-    this.state.gamePhase = 'defeated';
+    this.state.gamePhase = 'prestige';
     this.state.stats.deaths++;
     this.pause();
     this.addLog('important', 'The party has been defeated!');
-    this.addLog('info', 'You can try again from the current floor.');
   }
 
   handleTreasure(room) {
@@ -400,16 +399,40 @@ export class GameEngine {
     }
   }
 
-  retryAfterDefeat() {
-    if (this.state.gamePhase === 'defeated') {
-      // Restore party and stay on current floor
-      restoreParty(this.state.party);
-      const floorNum = this.state.dungeon.currentFloorNum;
-      this.state.dungeon.floor = generateFloor(floorNum);
-      this.state.gamePhase = 'exploring';
-      this.resume();
-      this.addLog('info', `The party regroups and re-enters Floor ${floorNum}.`);
+  startOver() {
+    if (this.state.gamePhase !== 'prestige') return;
+
+    // Reset game without prestige bonuses
+    const party = createParty(4);
+
+    // Still apply existing prestige bonuses from previous prestiges
+    if (this.state.prestige.level > 0) {
+      const bonus = getPrestigeBonus(this.state.prestige.level);
+      for (const char of party) {
+        char.maxHp = Math.floor(char.maxHp * (1 + bonus.statBonus));
+        char.hp = char.maxHp;
+        char.atk = Math.floor(char.atk * (1 + bonus.statBonus));
+        char.def = Math.floor(char.def * (1 + bonus.statBonus));
+        char.spd = Math.floor(char.spd * (1 + bonus.statBonus));
+        char.mag = Math.floor(char.mag * (1 + bonus.statBonus));
+      }
     }
+
+    this.state.party = party;
+    this.state.dungeon = {
+      currentFloorNum: 1,
+      floor: generateFloor(1),
+    };
+    this.state.inventory = { gold: 0, items: [] };
+    this.state.shop = [];
+    this.state.gamePhase = 'exploring';
+    this.state.log = [];
+
+    this.addLog('important', 'A new adventure begins...');
+    this.addLog('info', `Floor 1: ${this.state.dungeon.floor.description}`);
+
+    this.resume();
+    this.notify();
   }
 
   buyItem(item) {
@@ -462,8 +485,8 @@ export class GameEngine {
   }
 
   performPrestige() {
+    if (this.state.stats.highestFloor < 5) return;
     const points = calculatePrestigePoints(this.state.stats.highestFloor);
-    if (points <= 0) return;
 
     this.state.prestige.level++;
     this.state.prestige.points += points;
