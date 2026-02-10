@@ -86,10 +86,6 @@ export class GameEngine {
     for (const char of this.state.party) {
       if (!char.buffs) char.buffs = [];
     }
-    // Migrate old defeated phase to prestige
-    if (this.state.gamePhase === 'defeated') {
-      this.state.gamePhase = 'prestige';
-    }
     this.addLog('info', 'Game loaded successfully.');
     startAutoSave(() => this.state);
     this.startTicking();
