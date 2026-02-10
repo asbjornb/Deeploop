@@ -404,7 +404,7 @@ export class GameUI {
           const btn = document.createElement('button');
           btn.textContent = char.name.split(' ')[0];
           btn.style.fontSize = '0.7rem';
-          btn.style.padding = '2px 6px';
+          btn.style.padding = '6px 10px';
           btn.addEventListener('click', () => {
             this.engine.equipItemOnCharacter(char.id, item);
             this.closeModal();
