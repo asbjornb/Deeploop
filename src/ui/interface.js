@@ -420,6 +420,10 @@ export class GameUI {
     const container = document.createElement('div');
     const shopCount = state.shop ? state.shop.length : 0;
     const logCount = state.log.length - (state.lastSafeRoomLogIndex || 0);
+    const totalSkillPoints = state.party.reduce((sum, c) => sum + (c.skillPoints || 0), 0);
+    const unequippedItems = state.inventory.items.length;
+    const trainClass = totalSkillPoints > 0 ? ' has-actions' : '';
+    const inventoryClass = unequippedItems > 0 ? ' has-actions' : '';
     container.innerHTML = `
       <p>The party rests in a safe room. A merchant has set up shop here.</p>
       <div class="safe-room-actions">
@@ -427,23 +431,20 @@ export class GameUI {
           Visit Shop
           <span class="btn-desc">Browse ${shopCount} items for sale</span>
         </button>
-        <button id="btn-manage-inventory">
+        <button id="btn-manage-inventory" class="${inventoryClass}">
           Manage Equipment
-          <span class="btn-desc">Equip items from inventory (${state.inventory.items.length} items)</span>
+          <span class="btn-desc">${unequippedItems} item${unequippedItems !== 1 ? 's' : ''} in backpack</span>
         </button>
-        <button id="btn-train-skills">
+        <button id="btn-train-skills" class="${trainClass}">
           Train Skills
-          <span class="btn-desc">Spend skill points to upgrade or learn skills</span>
-        </button>
-        <button id="btn-event-log">
-          Event Log
-          <span class="btn-desc">Review ${logCount} events since last safe room</span>
+          <span class="btn-desc">${totalSkillPoints > 0 ? `${totalSkillPoints} skill point${totalSkillPoints !== 1 ? 's' : ''} to spend` : 'No skill points available'}</span>
         </button>
         <button id="btn-continue">
           Continue Deeper
           <span class="btn-desc">Venture to the next floor</span>
         </button>
       </div>
+      <button id="btn-event-log" class="safe-room-secondary">${logCount} event${logCount !== 1 ? 's' : ''} since last safe room &mdash; view log</button>
     `;
 
     // Defer event binding
@@ -548,9 +549,17 @@ export class GameUI {
     const modal = document.createElement('div');
     modal.className = 'modal';
 
+    const headerRow = document.createElement('div');
+    headerRow.className = 'modal-header';
     const header = document.createElement('h2');
     header.textContent = title;
-    modal.appendChild(header);
+    const closeBtnTop = document.createElement('button');
+    closeBtnTop.className = 'modal-close-x';
+    closeBtnTop.textContent = '\u00D7';
+    closeBtnTop.addEventListener('click', () => this.closeModal());
+    headerRow.appendChild(header);
+    headerRow.appendChild(closeBtnTop);
+    modal.appendChild(headerRow);
 
     const content = document.createElement('div');
     contentFn(content);
