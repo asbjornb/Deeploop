@@ -186,6 +186,7 @@ input {
 .combat-log .log-entry {
   color: var(--text-secondary);
   padding: 1px 0;
+  animation: log-fade-in 0.3s ease;
 }
 
 .combat-log .log-entry.damage {
@@ -206,11 +207,25 @@ input {
 
 .combat-log .log-entry.level {
   color: var(--accent-purple);
+  font-weight: bold;
+  text-shadow: 0 0 6px rgba(136, 68, 204, 0.4);
+}
+
+.combat-log .log-entry.crit {
+  color: var(--accent-orange);
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(204, 136, 68, 0.5);
 }
 
 .combat-log .log-entry.important {
   color: var(--accent-gold);
   font-weight: bold;
+  text-shadow: 0 0 6px rgba(212, 168, 68, 0.3);
+}
+
+@keyframes log-fade-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 /* Event Log Modal */
@@ -248,6 +263,11 @@ input {
 
 .event-log-entry.level {
   color: var(--accent-purple);
+}
+
+.event-log-entry.crit {
+  color: var(--accent-orange);
+  font-weight: bold;
 }
 
 .event-log-entry.important {
@@ -1331,4 +1351,165 @@ input {
   background: var(--bg-highlight);
   border-color: var(--accent-gold);
   color: var(--accent-gold);
+}
+
+/* Prestige points display on prestige screen */
+.prestige-points-display {
+  font-size: 1rem;
+  color: var(--accent-purple);
+  padding: 10px 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-purple);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.prestige-points-display .value {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* Prestige shop button */
+.btn-prestige-shop {
+  background: var(--bg-card);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+}
+
+.btn-prestige-shop:hover {
+  background: var(--bg-highlight);
+  color: #eec055;
+  border-color: #eec055;
+}
+
+/* Prestige shop modal */
+.prestige-shop-points {
+  color: var(--accent-purple) !important;
+}
+
+.prestige-upgrade-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 12px;
+  margin: 8px 0;
+  transition: border-color 0.2s;
+}
+
+.prestige-upgrade-card:hover:not(.maxed) {
+  border-color: var(--accent-purple);
+}
+
+.prestige-upgrade-card.maxed {
+  opacity: 0.6;
+  border-color: var(--accent-gold);
+}
+
+.upgrade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.upgrade-name {
+  color: var(--accent-purple);
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.upgrade-level {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.upgrade-desc {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-bottom: 6px;
+}
+
+.upgrade-values {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.upgrade-next {
+  color: var(--accent-gold);
+}
+
+.btn-buy-upgrade {
+  width: 100%;
+  padding: 6px 12px !important;
+  margin-top: 4px !important;
+  border-color: var(--accent-purple) !important;
+  color: var(--accent-purple) !important;
+}
+
+.btn-buy-upgrade:hover:not(:disabled) {
+  background: var(--bg-highlight) !important;
+  color: #aa66ee !important;
+  border-color: #aa66ee !important;
+}
+
+.btn-buy-upgrade:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Achievement unlock notification glow */
+.achievement.unlocked {
+  border-color: var(--accent-gold);
+  animation: achievement-glow 0.6s ease;
+}
+
+@keyframes achievement-glow {
+  0% { box-shadow: 0 0 0 rgba(212, 168, 68, 0); }
+  50% { box-shadow: 0 0 12px rgba(212, 168, 68, 0.4); }
+  100% { box-shadow: 0 0 0 rgba(212, 168, 68, 0); }
+}
+
+/* Stat bar pulse on change */
+.stat-bar .bar-fill {
+  transition: width 0.4s ease;
+}
+
+/* Enemy card defeat animation */
+.enemy-card.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+  transition: opacity 0.5s ease;
+}
+
+/* Character card death styling */
+.char-card.dead {
+  opacity: 0.4;
+  border-color: var(--accent-red);
+  transition: opacity 0.5s ease, border-color 0.3s ease;
+}
+
+/* Room dot pulse for current room */
+.floor-progress .room-dot.current {
+  border-color: var(--accent-gold);
+  background: var(--bg-highlight);
+  animation: room-pulse 1.5s ease infinite;
+}
+
+@keyframes room-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(212, 168, 68, 0); }
+  50% { box-shadow: 0 0 6px rgba(212, 168, 68, 0.5); }
+}
+
+/* Item tier colors in shop and inventory */
+.item-name.item-tier-1 { color: var(--text-secondary); }
+.item-name.item-tier-2 { color: var(--accent-green); }
+.item-name.item-tier-3 { color: var(--accent-blue); }
+.item-name.item-tier-4 { color: var(--accent-purple); text-shadow: 0 0 4px rgba(136, 68, 204, 0.3); }
+
+/* Boss room title flash */
+.room-title {
+  transition: color 0.3s;
 }

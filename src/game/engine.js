@@ -18,6 +18,8 @@ import {
   getAchievementBonuses,
   learnSkill as learnSkillFn,
   upgradeSkill as upgradeSkillFn,
+  buyPrestigeUpgrade as buyPrestigeUpgradeFn,
+  getPrestigeUpgradeValue,
   ACHIEVEMENTS,
 } from './progression.js';
 
@@ -42,6 +44,7 @@ export function createInitialState() {
       level: 0,
       points: 0,
       totalPoints: 0,
+      upgrades: {},
     },
     achievements: [],
     stats: {
@@ -86,6 +89,7 @@ export class GameEngine {
     // Restore missing fields from old saves
     if (!this.state.shop) this.state.shop = [];
     if (this.state.lastSafeRoomLogIndex == null) this.state.lastSafeRoomLogIndex = 0;
+    if (!this.state.prestige.upgrades) this.state.prestige.upgrades = {};
     for (const char of this.state.party) {
       if (!char.buffs) char.buffs = [];
     }
@@ -199,7 +203,7 @@ export class GameEngine {
 
       case 'safe':
         this.state.gamePhase = 'safeRoom';
-        this.state.shop = generateShop(this.state.dungeon.currentFloorNum, this.state.party);
+        this.state.shop = generateShop(this.state.dungeon.currentFloorNum, this.state.party, this.getShopTierBonus());
         this.pause();
         this.addLog('important', 'The party reaches a safe room. A merchant awaits.');
         break;
@@ -230,7 +234,8 @@ export class GameEngine {
     room.defeated = true;
 
     // Award XP
-    const xpLog = awardXP(this.state.party, enemies, this.state.prestige.level);
+    const upgradeXpBonus = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'xp_gain');
+    const xpLog = awardXP(this.state.party, enemies, this.state.prestige.level, upgradeXpBonus);
     for (const entry of xpLog) {
       this.addLog(entry.type, entry.text);
     }
@@ -252,6 +257,12 @@ export class GameEngine {
     // Prestige gold bonus
     const prestBonuses = getPrestigeBonus(this.state.prestige.level);
     gold = Math.floor(gold * (1 + prestBonuses.goldBonus));
+
+    // Prestige upgrade gold bonus
+    const upgradeGoldBonus = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'gold_find');
+    if (upgradeGoldBonus > 0) {
+      gold = Math.floor(gold * (1 + upgradeGoldBonus));
+    }
 
     this.state.inventory.gold += gold;
     this.state.stats.totalGold += gold;
@@ -376,7 +387,7 @@ export class GameEngine {
     if (floor.isBossFloor) {
       this.addLog('important', `Floor ${floor.number} cleared! Boss defeated!`);
       this.state.gamePhase = 'safeRoom';
-      this.state.shop = generateShop(nextFloorNum, this.state.party);
+      this.state.shop = generateShop(nextFloorNum, this.state.party, this.getShopTierBonus());
       this.pause();
       this.addLog('important', 'The party finds a safe room. A merchant awaits.');
     }
@@ -406,8 +417,9 @@ export class GameEngine {
   startOver() {
     if (this.state.gamePhase !== 'prestige') return;
 
-    // Reset game without prestige bonuses
-    const party = createParty(4, this.state.achievements);
+    // Reset game without new prestige bonuses
+    const allSkills = this.hasProdigyUpgrade();
+    const party = createParty(4, this.state.achievements, { allSkills });
 
     // Still apply existing prestige bonuses from previous prestiges
     if (this.state.prestige.level > 0) {
@@ -422,18 +434,24 @@ export class GameEngine {
       }
     }
 
+    // Apply prestige upgrade bonuses
     this.state.party = party;
+    this.applyPrestigeUpgrades(party);
+
+    const startingGold = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'starting_gold');
+
     this.state.dungeon = {
       currentFloorNum: 1,
       floor: generateFloor(1),
     };
-    this.state.inventory = { gold: 0, items: [] };
+    this.state.inventory = { gold: startingGold, items: [] };
     this.state.shop = [];
     this.state.gamePhase = 'exploring';
     this.state.log = [];
     this.state.lastSafeRoomLogIndex = 0;
 
     this.addLog('important', 'A new adventure begins...');
+    if (startingGold > 0) this.addLog('gold', `Nest Egg: Starting with ${startingGold} gold!`);
     this.addLog('info', `Floor 1: ${this.state.dungeon.floor.description}`);
 
     this.resume();
@@ -489,6 +507,42 @@ export class GameEngine {
     return result;
   }
 
+  applyPrestigeUpgrades(party) {
+    const upgrades = this.state.prestige.upgrades;
+
+    // Starting skill points
+    const spBonus = getPrestigeUpgradeValue(upgrades, 'starting_sp');
+    if (spBonus > 0) {
+      for (const char of party) {
+        char.skillPoints += spBonus;
+      }
+    }
+
+    // Stat bonuses from upgrades
+    const hpMult = getPrestigeUpgradeValue(upgrades, 'vitality');
+    const atkMult = getPrestigeUpgradeValue(upgrades, 'might');
+    const defMult = getPrestigeUpgradeValue(upgrades, 'resilience');
+    const magMult = getPrestigeUpgradeValue(upgrades, 'arcana');
+
+    for (const char of party) {
+      if (hpMult > 0) {
+        char.maxHp = Math.floor(char.maxHp * (1 + hpMult));
+        char.hp = char.maxHp;
+      }
+      if (atkMult > 0) char.atk = Math.floor(char.atk * (1 + atkMult));
+      if (defMult > 0) char.def = Math.floor(char.def * (1 + defMult));
+      if (magMult > 0) char.mag = Math.floor(char.mag * (1 + magMult));
+    }
+  }
+
+  getShopTierBonus() {
+    return getPrestigeUpgradeValue(this.state.prestige.upgrades, 'shop_tier');
+  }
+
+  hasProdigyUpgrade() {
+    return getPrestigeUpgradeValue(this.state.prestige.upgrades, 'three_skills') >= 1;
+  }
+
   performPrestige() {
     if (this.state.stats.highestFloor < 5) return;
     const points = calculatePrestigePoints(this.state.stats.highestFloor);
@@ -498,8 +552,9 @@ export class GameEngine {
     this.state.prestige.totalPoints += points;
     this.state.stats.totalPrestige++;
 
-    // Reset game but keep prestige, achievements, stats
-    const party = createParty(4, this.state.achievements);
+    // Reset game but keep prestige, achievements, stats, upgrades
+    const allSkills = this.hasProdigyUpgrade();
+    const party = createParty(4, this.state.achievements, { allSkills });
 
     // Apply prestige stat bonuses
     const bonus = getPrestigeBonus(this.state.prestige.level);
@@ -512,12 +567,18 @@ export class GameEngine {
       char.mag = Math.floor(char.mag * (1 + bonus.statBonus));
     }
 
+    // Apply prestige upgrade bonuses
     this.state.party = party;
+    this.applyPrestigeUpgrades(party);
+
+    // Starting gold from upgrades
+    const startingGold = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'starting_gold');
+
     this.state.dungeon = {
       currentFloorNum: 1,
       floor: generateFloor(1),
     };
-    this.state.inventory = { gold: 0, items: [] };
+    this.state.inventory = { gold: startingGold, items: [] };
     this.state.shop = [];
     this.state.gamePhase = 'exploring';
     this.state.log = [];
@@ -525,10 +586,20 @@ export class GameEngine {
 
     this.addLog('important', `PRESTIGE ${this.state.prestige.level}! Earned ${points} prestige points.`);
     this.addLog('info', `Bonuses: +${(bonus.statBonus * 100).toFixed(0)}% stats, +${(bonus.xpBonus * 100).toFixed(0)}% XP, +${(bonus.goldBonus * 100).toFixed(0)}% gold`);
+    if (startingGold > 0) this.addLog('gold', `Nest Egg: Starting with ${startingGold} gold!`);
     this.addLog('info', 'A new adventure begins with ancient wisdom...');
 
     this.resume();
     this.notify();
+  }
+
+  buyPrestigeUpgradeAction(upgradeId) {
+    const result = buyPrestigeUpgradeFn(this.state.prestige, upgradeId);
+    if (result.success) {
+      this.addLog('important', result.message);
+    }
+    this.notify();
+    return result;
   }
 
   checkAllAchievements() {

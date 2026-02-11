@@ -3,6 +3,7 @@ import {
   randInt,
   randChoice,
   shuffle,
+  pickN,
   xpForLevel,
   calculateDamage,
   calculateMagicDamage,
@@ -29,8 +30,12 @@ import {
   calculatePrestigePoints,
   getPrestigeBonus,
   checkAchievements,
+  buyPrestigeUpgrade,
+  getPrestigeUpgradeLevel,
+  getPrestigeUpgradeValue,
   SKILLS,
   ACHIEVEMENTS,
+  PRESTIGE_UPGRADES,
 } from '../src/game/progression.js';
 import { createInitialState } from '../src/game/engine.js';
 
@@ -98,6 +103,23 @@ describe('Math Utilities', () => {
     expect(clamp(-5, 0, 10)).toBe(0);
     expect(clamp(15, 0, 10)).toBe(10);
   });
+
+  it('pickN returns N random elements', () => {
+    const arr = ['a', 'b', 'c', 'd', 'e'];
+    const picked = pickN(arr, 3);
+    expect(picked).toHaveLength(3);
+    for (const item of picked) {
+      expect(arr).toContain(item);
+    }
+    // All unique
+    expect(new Set(picked).size).toBe(3);
+  });
+
+  it('pickN does not mutate original', () => {
+    const arr = [1, 2, 3, 4];
+    pickN(arr, 2);
+    expect(arr).toEqual([1, 2, 3, 4]);
+  });
 });
 
 describe('Party System', () => {
@@ -113,8 +135,13 @@ describe('Party System', () => {
     expect(char.hp).toBeGreaterThan(0);
     expect(char.maxHp).toBe(char.hp);
     expect(char.atk).toBeGreaterThan(0);
-    expect(char.skills).toHaveLength(3);
+    expect(char.skills).toHaveLength(2);
     expect(char.alive).toBe(true);
+  });
+
+  it('creates a character with all 3 skills when allSkills option is set', () => {
+    const char = createCharacter('warrior', 'human', { allSkills: true });
+    expect(char.skills).toHaveLength(3);
   });
 
   it('creates party with 4 members', () => {
@@ -506,6 +533,50 @@ describe('Shop System', () => {
   });
 });
 
+describe('Prestige Upgrades', () => {
+  it('all prestige upgrades have required properties', () => {
+    for (const upgrade of PRESTIGE_UPGRADES) {
+      expect(upgrade.id).toBeTruthy();
+      expect(upgrade.name).toBeTruthy();
+      expect(upgrade.description).toBeTruthy();
+      expect(upgrade.maxLevel).toBeGreaterThan(0);
+      expect(upgrade.costs).toHaveLength(upgrade.maxLevel);
+      expect(upgrade.values).toHaveLength(upgrade.maxLevel);
+    }
+  });
+
+  it('buyPrestigeUpgrade deducts points and increments level', () => {
+    const prestige = { level: 1, points: 100, totalPoints: 100, upgrades: {} };
+    const result = buyPrestigeUpgrade(prestige, 'starting_gold');
+    expect(result.success).toBe(true);
+    expect(prestige.upgrades.starting_gold).toBe(1);
+    expect(prestige.points).toBeLessThan(100);
+  });
+
+  it('buyPrestigeUpgrade fails when insufficient points', () => {
+    const prestige = { level: 1, points: 0, totalPoints: 0, upgrades: {} };
+    const result = buyPrestigeUpgrade(prestige, 'starting_gold');
+    expect(result.success).toBe(false);
+  });
+
+  it('buyPrestigeUpgrade fails at max level', () => {
+    const prestige = { level: 5, points: 999, totalPoints: 999, upgrades: { three_skills: 1 } };
+    const result = buyPrestigeUpgrade(prestige, 'three_skills');
+    expect(result.success).toBe(false);
+  });
+
+  it('getPrestigeUpgradeLevel returns 0 for unpurchased', () => {
+    expect(getPrestigeUpgradeLevel({}, 'starting_gold')).toBe(0);
+    expect(getPrestigeUpgradeLevel(null, 'starting_gold')).toBe(0);
+  });
+
+  it('getPrestigeUpgradeValue returns correct value', () => {
+    const upgrades = { starting_gold: 2 };
+    const value = getPrestigeUpgradeValue(upgrades, 'starting_gold');
+    expect(value).toBe(PRESTIGE_UPGRADES.find((u) => u.id === 'starting_gold').values[1]);
+  });
+});
+
 describe('Game Engine State', () => {
   it('creates valid initial state', () => {
     resetCharacterId(1);
@@ -517,6 +588,7 @@ describe('Game Engine State', () => {
     expect(state.inventory.gold).toBe(0);
     expect(state.shop).toEqual([]);
     expect(state.prestige.level).toBe(0);
+    expect(state.prestige.upgrades).toEqual({});
     expect(state.achievements).toEqual([]);
     expect(state.gamePhase).toBe('exploring');
     expect(state.log.length).toBeGreaterThan(0);
@@ -530,5 +602,6 @@ describe('Game Engine State', () => {
 
     expect(parsed.party).toHaveLength(4);
     expect(parsed.dungeon.currentFloorNum).toBe(1);
+    expect(parsed.prestige.upgrades).toEqual({});
   });
 });

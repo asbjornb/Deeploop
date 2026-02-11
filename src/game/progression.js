@@ -381,6 +381,32 @@ export const LEARNABLE_SKILLS = [
     description: 'Full party dodge for 1 turn. Requires: Veteran.',
   },
 
+  // Base class skills (learnable when not randomly selected at start)
+  { skillId: 'slash', name: 'Slash', classes: ['warrior'], cost: 1, achievementReq: null, description: 'A powerful sword swing.' },
+  { skillId: 'shield_bash', name: 'Shield Bash', classes: ['warrior'], cost: 1, achievementReq: null, description: 'Bash with shield. May stun.' },
+  { skillId: 'war_cry', name: 'War Cry', classes: ['warrior'], cost: 1, achievementReq: null, description: 'Boosts party ATK.' },
+  { skillId: 'fireball', name: 'Fireball', classes: ['mage'], cost: 1, achievementReq: null, description: 'Fire damage to all enemies.' },
+  { skillId: 'ice_shard', name: 'Ice Shard', classes: ['mage'], cost: 1, achievementReq: null, description: 'Ice damage. Slows target.' },
+  { skillId: 'arcane_blast', name: 'Arcane Blast', classes: ['mage'], cost: 1, achievementReq: null, description: 'Massive magic damage.' },
+  { skillId: 'backstab', name: 'Backstab', classes: ['rogue'], cost: 1, achievementReq: null, description: 'High damage. High crit chance.' },
+  { skillId: 'poison_blade', name: 'Poison Blade', classes: ['rogue'], cost: 1, achievementReq: null, description: 'Poisons the target.' },
+  { skillId: 'evasion', name: 'Evasion', classes: ['rogue'], cost: 1, achievementReq: null, description: 'Dodge the next attack.' },
+  { skillId: 'heal', name: 'Heal', classes: ['healer'], cost: 1, achievementReq: null, description: 'Restore HP to an ally.' },
+  { skillId: 'bless', name: 'Bless', classes: ['healer'], cost: 1, achievementReq: null, description: 'Boosts party DEF.' },
+  { skillId: 'smite', name: 'Smite', classes: ['healer'], cost: 1, achievementReq: null, description: 'Holy damage to one enemy.' },
+  { skillId: 'holy_strike', name: 'Holy Strike', classes: ['paladin'], cost: 1, achievementReq: null, description: 'A strike infused with holy power.' },
+  { skillId: 'lay_on_hands', name: 'Lay on Hands', classes: ['paladin'], cost: 1, achievementReq: null, description: 'A powerful healing touch.' },
+  { skillId: 'divine_aura', name: 'Divine Aura', classes: ['paladin'], cost: 1, achievementReq: null, description: 'Shields the party with holy light.' },
+  { skillId: 'soul_bolt', name: 'Soul Bolt', classes: ['necromancer'], cost: 1, achievementReq: null, description: 'Tears at the target with dark energy.' },
+  { skillId: 'drain_life', name: 'Drain Life', classes: ['necromancer'], cost: 1, achievementReq: null, description: 'Steals life from the target.' },
+  { skillId: 'bone_shield', name: 'Bone Shield', classes: ['necromancer'], cost: 1, achievementReq: null, description: 'Surrounds self with a barrier of bones.' },
+  { skillId: 'reckless_blow', name: 'Reckless Blow', classes: ['berserker'], cost: 1, achievementReq: null, description: 'Devastating hit. Hurts yourself too.' },
+  { skillId: 'blood_rage', name: 'Blood Rage', classes: ['berserker'], cost: 1, achievementReq: null, description: 'Fury made physical. Massively boosts ATK.' },
+  { skillId: 'cleave', name: 'Cleave', classes: ['berserker'], cost: 1, achievementReq: null, description: 'Slash through all enemies.' },
+  { skillId: 'palm_strike', name: 'Palm Strike', classes: ['monk'], cost: 1, achievementReq: null, description: 'Focused strike. May stun.' },
+  { skillId: 'inner_peace', name: 'Inner Peace', classes: ['monk'], cost: 1, achievementReq: null, description: 'Meditate briefly. Restore 30% HP.' },
+  { skillId: 'flurry', name: 'Flurry', classes: ['monk'], cost: 1, achievementReq: null, description: 'Three rapid strikes on random enemies.' },
+
   // Cross-class skills (any class can learn)
   {
     skillId: 'rally',
@@ -650,7 +676,7 @@ export function upgradeSkill(char, skillId) {
  * Award XP to the party from defeated enemies.
  * Returns log entries for any level-ups.
  */
-export function awardXP(party, enemies, prestigeLevel) {
+export function awardXP(party, enemies, prestigeLevel, upgradeXpBonus = 0) {
   const log = [];
   const totalXP = enemies.reduce((sum, e) => sum + e.xp, 0);
 
@@ -666,6 +692,11 @@ export function awardXP(party, enemies, prestigeLevel) {
 
     // Prestige XP bonus
     xpGain = Math.floor(xpGain * (1 + prestigeLevel * 0.05));
+
+    // Prestige upgrade XP bonus
+    if (upgradeXpBonus > 0) {
+      xpGain = Math.floor(xpGain * (1 + upgradeXpBonus));
+    }
 
     char.xp += xpGain;
 
@@ -741,6 +772,136 @@ export function getPrestigeBonus(prestigeLevel) {
     statBonus: prestigeLevel * 0.03,
     xpBonus: prestigeLevel * 0.05,
     goldBonus: prestigeLevel * 0.1,
+  };
+}
+
+// Prestige upgrade definitions (permanent upgrades bought with prestige points)
+export const PRESTIGE_UPGRADES = [
+  {
+    id: 'starting_gold',
+    name: 'Nest Egg',
+    description: 'Start each run with bonus gold.',
+    maxLevel: 5,
+    costs: [3, 8, 15, 25, 40],
+    values: [50, 150, 300, 500, 800],
+  },
+  {
+    id: 'starting_sp',
+    name: 'Innate Talent',
+    description: 'Party members start with extra skill points.',
+    maxLevel: 3,
+    costs: [5, 15, 30],
+    values: [1, 2, 3],
+  },
+  {
+    id: 'vitality',
+    name: 'Vitality',
+    description: 'Permanent HP bonus for all party members.',
+    maxLevel: 5,
+    costs: [2, 5, 10, 18, 30],
+    values: [0.05, 0.10, 0.18, 0.28, 0.40],
+  },
+  {
+    id: 'might',
+    name: 'Might',
+    description: 'Permanent ATK bonus for all party members.',
+    maxLevel: 5,
+    costs: [2, 5, 10, 18, 30],
+    values: [0.05, 0.10, 0.18, 0.28, 0.40],
+  },
+  {
+    id: 'arcana',
+    name: 'Arcana',
+    description: 'Permanent MAG bonus for all party members.',
+    maxLevel: 3,
+    costs: [3, 8, 18],
+    values: [0.08, 0.18, 0.30],
+  },
+  {
+    id: 'resilience',
+    name: 'Resilience',
+    description: 'Permanent DEF bonus for all party members.',
+    maxLevel: 3,
+    costs: [3, 8, 18],
+    values: [0.08, 0.18, 0.30],
+  },
+  {
+    id: 'gold_find',
+    name: 'Golden Touch',
+    description: 'Find more gold from all sources.',
+    maxLevel: 5,
+    costs: [2, 5, 10, 18, 30],
+    values: [0.10, 0.25, 0.40, 0.60, 0.85],
+  },
+  {
+    id: 'xp_gain',
+    name: 'Quick Learner',
+    description: 'Gain more XP from combat.',
+    maxLevel: 5,
+    costs: [2, 5, 10, 18, 30],
+    values: [0.10, 0.20, 0.35, 0.50, 0.70],
+  },
+  {
+    id: 'three_skills',
+    name: 'Prodigy',
+    description: 'Party members start with all 3 class skills.',
+    maxLevel: 1,
+    costs: [20],
+    values: [1],
+  },
+  {
+    id: 'shop_tier',
+    name: 'Merchant Connections',
+    description: 'Shops offer higher tier items earlier.',
+    maxLevel: 3,
+    costs: [5, 12, 25],
+    values: [1, 2, 3],
+  },
+];
+
+/**
+ * Get the current level of a prestige upgrade.
+ */
+export function getPrestigeUpgradeLevel(upgrades, upgradeId) {
+  return (upgrades && upgrades[upgradeId]) || 0;
+}
+
+/**
+ * Get the effective value of a prestige upgrade at its current level.
+ * Returns 0 if not purchased.
+ */
+export function getPrestigeUpgradeValue(upgrades, upgradeId) {
+  const level = getPrestigeUpgradeLevel(upgrades, upgradeId);
+  if (level === 0) return 0;
+  const def = PRESTIGE_UPGRADES.find((u) => u.id === upgradeId);
+  if (!def) return 0;
+  return def.values[level - 1];
+}
+
+/**
+ * Buy a prestige upgrade. Returns { success, message }.
+ */
+export function buyPrestigeUpgrade(prestige, upgradeId) {
+  const def = PRESTIGE_UPGRADES.find((u) => u.id === upgradeId);
+  if (!def) return { success: false, message: 'Upgrade not found.' };
+
+  if (!prestige.upgrades) prestige.upgrades = {};
+  const currentLevel = prestige.upgrades[upgradeId] || 0;
+
+  if (currentLevel >= def.maxLevel) {
+    return { success: false, message: `${def.name} is already at max level.` };
+  }
+
+  const cost = def.costs[currentLevel];
+  if (prestige.points < cost) {
+    return { success: false, message: `Need ${cost} prestige points (have ${prestige.points}).` };
+  }
+
+  prestige.points -= cost;
+  prestige.upgrades[upgradeId] = currentLevel + 1;
+  return {
+    success: true,
+    message: `${def.name} upgraded to level ${currentLevel + 1}!`,
   };
 }
 
