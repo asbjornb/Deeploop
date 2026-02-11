@@ -9,6 +9,9 @@ export class GameUI {
     this.container = container;
     this.engine = engine;
     this.currentModal = null;
+    this._logContainer = document.createElement('div');
+    this._logContainer.className = 'combat-log';
+    this._lastLogLength = 0;
   }
 
   renderStartScreen() {
@@ -42,6 +45,11 @@ export class GameUI {
     if (!state) {
       this.renderStartScreen();
       return;
+    }
+
+    // Detach persistent log container before clearing to preserve its contents
+    if (this._logContainer.parentNode) {
+      this._logContainer.remove();
     }
 
     this.container.innerHTML = '';
@@ -324,16 +332,42 @@ export class GameUI {
     view.appendChild(content);
     panel.appendChild(view);
 
-    // Combat log
-    const logContainer = document.createElement('div');
-    logContainer.className = 'combat-log';
-    const recentLogs = state.log.slice(-50);
-    for (const entry of recentLogs) {
-      const line = document.createElement('div');
-      line.className = `log-entry ${entry.type}`;
-      line.textContent = `> ${entry.text}`;
-      logContainer.appendChild(line);
+    // Combat log - incremental update to avoid blinking
+    const logContainer = this._logContainer;
+    const totalLogs = state.log.length;
+    const prevLength = this._lastLogLength;
+
+    if (totalLogs < prevLength || logContainer.children.length === 0) {
+      // Full rebuild needed (first render or log was trimmed)
+      logContainer.innerHTML = '';
+      const recentLogs = state.log.slice(-50);
+      for (const entry of recentLogs) {
+        const line = document.createElement('div');
+        line.className = `log-entry ${entry.type}`;
+        line.style.animation = 'none';
+        line.textContent = `> ${entry.text}`;
+        logContainer.appendChild(line);
+      }
+    } else if (totalLogs > prevLength) {
+      // Only append new entries
+      const newCount = totalLogs - prevLength;
+      const newEntries = state.log.slice(-newCount);
+      for (const entry of newEntries) {
+        const line = document.createElement('div');
+        line.className = `log-entry ${entry.type}`;
+        line.textContent = `> ${entry.text}`;
+        line.addEventListener('animationend', () => {
+          line.style.animation = 'none';
+        }, { once: true });
+        logContainer.appendChild(line);
+      }
+      // Keep at most 50 entries in DOM
+      while (logContainer.children.length > 50) {
+        logContainer.removeChild(logContainer.firstChild);
+      }
     }
+
+    this._lastLogLength = totalLogs;
     panel.appendChild(logContainer);
 
     return panel;
