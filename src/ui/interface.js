@@ -1,5 +1,5 @@
-import { CLASSES, RACES, getEffectiveStat } from '../game/party.js';
-import { SKILLS, ACHIEVEMENTS, LEARNABLE_SKILLS, getPrestigeBonus, calculatePrestigePoints, getAvailableSkills, PRESTIGE_UPGRADES, getPrestigeUpgradeLevel } from '../game/progression.js';
+import { CLASSES, RACES, getEffectiveStat, getActiveSynergies } from '../game/party.js';
+import { SKILLS, ACHIEVEMENTS, LEARNABLE_SKILLS, getPrestigeBonus, calculatePrestigePoints, getAvailableSkills, PRESTIGE_UPGRADES, getPrestigeUpgradeLevel, MUTATIONS } from '../game/progression.js';
 import { canEquip, getEquipDelta } from '../game/dungeon.js';
 import { formatNumber } from '../utils/math.js';
 import { hasSave } from '../utils/save.js';
@@ -199,6 +199,37 @@ export class GameUI {
 
     screen.appendChild(buttons);
 
+    // Challenge Mutations section
+    const mutSection = document.createElement('div');
+    mutSection.className = 'mutation-section';
+    mutSection.innerHTML = '<h2>Challenge Mutations</h2><p class="mutation-desc">Activate a mutation before starting over. Reach floor 15 to earn an achievement with permanent bonuses.</p>';
+
+    const mutGrid = document.createElement('div');
+    mutGrid.className = 'mutation-grid';
+
+    for (const mut of MUTATIONS) {
+      const completed = state.stats.challengesCompleted && state.stats.challengesCompleted[mut.id];
+      const card = document.createElement('div');
+      card.className = `mutation-card${completed ? ' completed' : ''}`;
+      card.innerHTML = `
+        <div class="mutation-name">${mut.name}${completed ? ' [DONE]' : ''}</div>
+        <div class="mutation-detail">${mut.description}</div>
+        <div class="mutation-goal">Goal: Floor ${mut.goalFloor}</div>
+      `;
+      const btn = document.createElement('button');
+      btn.className = 'btn-small btn-mutation';
+      btn.textContent = 'Activate & Start';
+      btn.addEventListener('click', () => {
+        this.engine.startOver();
+        this.engine.activateMutation(mut.id);
+      });
+      card.appendChild(btn);
+      mutGrid.appendChild(card);
+    }
+
+    mutSection.appendChild(mutGrid);
+    screen.appendChild(mutSection);
+
     return screen;
   }
 
@@ -215,6 +246,8 @@ export class GameUI {
           ? 'Safe Room'
           : 'Exploring';
 
+    const activeMut = state.activeMutation ? MUTATIONS.find((m) => m.id === state.activeMutation) : null;
+
     header.innerHTML = `
       <h1>DEEPLOOP</h1>
       <div class="header-info">
@@ -222,8 +255,20 @@ export class GameUI {
         <span>Gold <span class="value">${formatNumber(state.inventory.gold)}</span></span>
         <span>Status: <span class="value">${phaseText}</span></span>
         ${state.prestige.level > 0 ? `<span>Prestige <span class="value">${state.prestige.level}</span></span>` : ''}
+        ${activeMut ? `<span class="mutation-badge">${activeMut.name}</span>` : ''}
       </div>
     `;
+
+    // Show active synergies
+    const synergies = getActiveSynergies(state.party);
+    if (synergies.length > 0) {
+      const synergyBar = document.createElement('div');
+      synergyBar.className = 'synergy-bar';
+      synergyBar.innerHTML = synergies.map((s) =>
+        `<span class="synergy-badge" title="${s.description}">${s.name}</span>`
+      ).join('');
+      header.appendChild(synergyBar);
+    }
     return header;
   }
 
@@ -308,6 +353,8 @@ export class GameUI {
         return 'Strange Discovery';
       case 'rest':
         return 'Rest Point';
+      case 'trap':
+        return 'Trap!';
       case 'safe':
         return 'Safe Room';
       default:
@@ -499,6 +546,9 @@ export class GameUI {
     if (item.def) parts.push(`DEF ${item.def > 0 ? '+' : ''}${item.def}`);
     if (item.spd) parts.push(`SPD ${item.spd > 0 ? '+' : ''}${item.spd}`);
     if (item.mag) parts.push(`MAG ${item.mag > 0 ? '+' : ''}${item.mag}`);
+    if (item.enchantment) {
+      parts.push(`[${item.enchantment.description}]`);
+    }
     return parts.join('  ');
   }
 

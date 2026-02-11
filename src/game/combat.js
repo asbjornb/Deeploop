@@ -1,5 +1,5 @@
 import { calculateDamage, calculateMagicDamage, randChoice, randInt } from '../utils/math.js';
-import { getEffectiveStat, RACES } from './party.js';
+import { getEffectiveStat, getEnchantmentBonus, RACES } from './party.js';
 import { SKILLS } from './progression.js';
 
 /**
@@ -107,9 +107,20 @@ function executeCharacterTurn(char, party, enemies) {
     // Basic attack
     const target = randChoice(aliveEnemies);
     const atk = getEffectiveStat(char, 'atk');
-    const dmg = calculateDamage(atk, target.def);
+    let dmg = calculateDamage(atk, target.def);
+    // Enchantment: crit chance
+    const critBonus = getEnchantmentBonus(char, 'critChance');
+    if (critBonus > 0 && Math.random() < critBonus) {
+      dmg = Math.floor(dmg * 1.5);
+      log.push({ type: 'crit', text: `CRITICAL! ${char.name} attacks ${target.name} for ${dmg} damage!` });
+    } else {
+      log.push({ type: 'damage', text: `${char.name} attacks ${target.name} for ${dmg} damage!` });
+    }
     target.hp = Math.max(0, target.hp - dmg);
-    log.push({ type: 'damage', text: `${char.name} attacks ${target.name} for ${dmg} damage!` });
+    // Enchantment: life steal
+    applyEnchantLifeSteal(char, dmg, log);
+    // Enchantment: poison chance
+    applyEnchantPoison(char, target, log);
     if (target.hp <= 0) {
       log.push({ type: 'info', text: `${target.name} is defeated!` });
     }
@@ -174,8 +185,9 @@ function executeCharacterTurn(char, party, enemies) {
         const targetDef = skill.ignoreDefense ? 0 : target.def;
         let dmg = calculateDamage(Math.floor(atk * power), targetDef);
 
-        // Crit check (guaranteed or chance-based)
-        const isCrit = skill.guaranteedCrit || (skill.critBonus && Math.random() < skill.critBonus);
+        // Crit check (guaranteed, skill-based, or enchantment-based)
+        const enchCrit = getEnchantmentBonus(char, 'critChance');
+        const isCrit = skill.guaranteedCrit || (skill.critBonus && Math.random() < skill.critBonus) || (enchCrit > 0 && Math.random() < enchCrit);
         if (isCrit) {
           dmg = Math.floor(dmg * 1.5);
           log.push({ type: 'crit', text: `CRITICAL! ${char.name} uses ${skill.name} on ${target.name} for ${dmg} damage!` });
@@ -430,6 +442,12 @@ function applyEnemyDamage(enemy, target, rawDmg, log, dmgText) {
   // Dwarf damage reduction
   if (target.race === 'dwarf') {
     dmg = Math.floor(dmg * (1 - RACES.dwarf.perkValue));
+  }
+
+  // Enchantment: damage reduction
+  const dmgReduce = getEnchantmentBonus(target, 'damageReduction');
+  if (dmgReduce > 0) {
+    dmg = Math.floor(dmg * (1 - dmgReduce));
   }
 
   // Mana Shield: absorb damage using MP
@@ -930,6 +948,30 @@ function chooseAction(char, party, enemies) {
 
     default:
       return null;
+  }
+}
+
+function applyEnchantLifeSteal(char, dmg, log) {
+  const lifeSteal = getEnchantmentBonus(char, 'lifeSteal');
+  if (lifeSteal > 0 && dmg > 0) {
+    const healAmt = Math.floor(dmg * lifeSteal);
+    if (healAmt > 0) {
+      const oldHp = char.hp;
+      char.hp = Math.min(char.maxHp, char.hp + healAmt);
+      if (char.hp > oldHp) {
+        log.push({ type: 'heal', text: `${char.name}'s vampiric gear drains ${char.hp - oldHp} HP!` });
+      }
+    }
+  }
+}
+
+function applyEnchantPoison(char, target, log) {
+  const poisonChance = getEnchantmentBonus(char, 'poisonChance');
+  if (poisonChance > 0 && target.hp > 0 && (!target.poison || target.poison === 0) && Math.random() < poisonChance) {
+    const poisonDmg = Math.floor(getEffectiveStat(char, 'atk') * 0.25);
+    target.poison = poisonDmg;
+    target.poisonTurns = 3;
+    log.push({ type: 'info', text: `${target.name} is poisoned by enchanted gear!` });
   }
 }
 
