@@ -6,6 +6,7 @@ import {
   healParty,
   RACES,
   CLASSES,
+  getSynergyBonuses,
 } from './party.js';
 import { generateFloor, generateShop } from './dungeon.js';
 import { resolveCombatTurn, checkCombatResult } from './combat.js';
@@ -21,6 +22,7 @@ import {
   buyPrestigeUpgrade as buyPrestigeUpgradeFn,
   getPrestigeUpgradeValue,
   ACHIEVEMENTS,
+  MUTATIONS,
 } from './progression.js';
 
 const TICK_INTERVAL = 600;
@@ -56,7 +58,9 @@ export function createInitialState() {
       deaths: 0,
       totalPrestige: 0,
       floorsCleared: 0,
+      challengesCompleted: {},
     },
+    activeMutation: null,
     gamePhase: 'exploring',
     log: [{ type: 'important', text: 'The party enters the dungeon...' }],
     lastSafeRoomLogIndex: 0,
@@ -90,6 +94,8 @@ export class GameEngine {
     if (!this.state.shop) this.state.shop = [];
     if (this.state.lastSafeRoomLogIndex == null) this.state.lastSafeRoomLogIndex = 0;
     if (!this.state.prestige.upgrades) this.state.prestige.upgrades = {};
+    if (!this.state.stats.challengesCompleted) this.state.stats.challengesCompleted = {};
+    if (this.state.activeMutation === undefined) this.state.activeMutation = null;
     for (const char of this.state.party) {
       if (!char.buffs) char.buffs = [];
     }
@@ -181,6 +187,13 @@ export class GameEngine {
       case 'combat':
       case 'boss':
         this.state.gamePhase = 'combat';
+        // Apply mutation effects to enemies
+        if (this.state.activeMutation) {
+          const mutation = MUTATIONS.find((m) => m.id === this.state.activeMutation);
+          if (mutation && mutation.applyToEnemies) {
+            mutation.applyToEnemies(room.enemies);
+          }
+        }
         if (room.type === 'boss') {
           this.addLog('important', `BOSS: ${room.enemies[0].name} appears!`);
         } else {
@@ -201,9 +214,13 @@ export class GameEngine {
         this.handleRest(room);
         break;
 
+      case 'trap':
+        this.handleTrap(room);
+        break;
+
       case 'safe':
         this.state.gamePhase = 'safeRoom';
-        this.state.shop = generateShop(this.state.dungeon.currentFloorNum, this.state.party, this.getShopTierBonus());
+        this.state.shop = generateShop(this.state.dungeon.currentFloorNum, this.state.party, this.getShopTierBonus(), this.getEnchantLuckBonus());
         this.pause();
         this.addLog('important', 'The party reaches a safe room. A merchant awaits.');
         break;
@@ -264,6 +281,37 @@ export class GameEngine {
       gold = Math.floor(gold * (1 + upgradeGoldBonus));
     }
 
+    // Synergy gold bonus
+    const synergyBonuses = getSynergyBonuses(this.state.party);
+    const synergyPower = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'synergy_power');
+    if (synergyBonuses.gold > 0) {
+      gold = Math.floor(gold * (1 + synergyBonuses.gold * (1 + synergyPower)));
+    }
+
+    // Enchantment gold find bonus (from all party members)
+    let totalGoldFind = 0;
+    for (const char of this.state.party) {
+      if (char.alive) {
+        for (const slot of ['weapon', 'armor', 'accessory']) {
+          const item = char.equipment[slot];
+          if (item && item.enchantment && item.enchantment.stat === 'goldFind') {
+            totalGoldFind += item.enchantment.value;
+          }
+        }
+      }
+    }
+    if (totalGoldFind > 0) {
+      gold = Math.floor(gold * (1 + totalGoldFind));
+    }
+
+    // Mutation gold multiplier
+    if (this.state.activeMutation) {
+      const mutation = MUTATIONS.find((m) => m.id === this.state.activeMutation);
+      if (mutation && mutation.goldMultiplier) {
+        gold = Math.floor(gold * mutation.goldMultiplier);
+      }
+    }
+
     this.state.inventory.gold += gold;
     this.state.stats.totalGold += gold;
     this.addLog('gold', `Found ${gold} gold!`);
@@ -311,8 +359,12 @@ export class GameEngine {
 
     switch (event.effect) {
       case 'heal':
-        healParty(this.state.party, event.value);
-        this.addLog('heal', 'The party feels rejuvenated!');
+        if (this.state.activeMutation === 'ironman') {
+          this.addLog('info', 'The waters shimmer but the curse prevents healing.');
+        } else {
+          healParty(this.state.party, event.value);
+          this.addLog('heal', 'The party feels rejuvenated!');
+        }
         break;
       case 'damage': {
         for (const char of this.state.party) {
@@ -363,14 +415,185 @@ export class GameEngine {
         }
         break;
       }
+      case 'gamble': {
+        const bet = Math.min(50 + this.state.dungeon.currentFloorNum * 10, this.state.inventory.gold);
+        if (bet <= 0) {
+          this.addLog('info', 'You have nothing to wager. The figure shrugs.');
+          break;
+        }
+        const roll = Math.random();
+        if (roll < 0.4) {
+          const winnings = bet * 2;
+          this.state.inventory.gold += winnings;
+          this.state.stats.totalGold += winnings;
+          this.addLog('gold', `Won ${winnings} gold! Lady luck smiles.`);
+        } else if (roll < 0.7) {
+          this.addLog('info', 'A draw. The figure nods respectfully.');
+        } else {
+          this.state.inventory.gold = Math.max(0, this.state.inventory.gold - bet);
+          this.addLog('damage', `Lost ${bet} gold! The figure grins wickedly.`);
+        }
+        break;
+      }
+      case 'skill_xp': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            for (const skill of char.skills) {
+              skill.uses += event.value;
+            }
+          }
+        }
+        this.addLog('info', 'The party gains skill experience from ancient texts!');
+        break;
+      }
+      case 'cursed_treasure': {
+        const floorNum = this.state.dungeon.currentFloorNum;
+        for (const char of this.state.party) {
+          if (char.alive) {
+            const dmg = Math.floor(char.maxHp * 0.2);
+            char.hp = Math.max(1, char.hp - dmg);
+          }
+        }
+        const gold = 20 + floorNum * 8;
+        this.state.inventory.gold += gold;
+        this.state.stats.totalGold += gold;
+        this.addLog('damage', 'Dark energy lashes out! The party takes damage.');
+        this.addLog('gold', `But found ${gold} gold inside the cursed chest!`);
+        break;
+      }
+      case 'bonus_xp': {
+        // Give bonus XP to all alive party members
+        const floorNum = this.state.dungeon.currentFloorNum;
+        const bonusXp = Math.floor(20 * (1 + floorNum * event.value));
+        for (const char of this.state.party) {
+          if (char.alive && char.hp > 0) {
+            char.xp += bonusXp;
+          }
+        }
+        this.addLog('info', `The spirit shares wisdom. Party gains ${bonusXp} bonus XP!`);
+        break;
+      }
+      case 'buff_all': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            char.buffs.push({ stat: 'atk', amount: event.value, turns: 10, name: 'Campfire' });
+            char.buffs.push({ stat: 'def', amount: event.value, turns: 10, name: 'Campfire' });
+          }
+        }
+        this.addLog('info', 'The warmth steels the party. ATK and DEF boosted!');
+        break;
+      }
+      case 'buff_spd': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            char.buffs.push({ stat: 'spd', amount: event.value, turns: 10, name: 'Mirror Pool' });
+          }
+        }
+        this.addLog('info', 'Reflexes sharpen! SPD boosted.');
+        break;
+      }
+      case 'sacrifice_gold': {
+        const cost = 30 + this.state.dungeon.currentFloorNum * 5;
+        if (this.state.inventory.gold >= cost) {
+          this.state.inventory.gold -= cost;
+          // Heal party and buff stats
+          healParty(this.state.party, 0.4);
+          for (const char of this.state.party) {
+            if (char.alive) {
+              char.buffs.push({ stat: 'atk', amount: 4, turns: 15, name: 'Altar' });
+              char.buffs.push({ stat: 'mag', amount: 4, turns: 15, name: 'Altar' });
+            }
+          }
+          this.addLog('gold', `Offered ${cost} gold. The altar blesses the party!`);
+          this.addLog('heal', 'HP restored and stats boosted!');
+        } else {
+          this.addLog('info', 'Not enough gold for an offering. The altar remains silent.');
+        }
+        break;
+      }
     }
   }
 
   handleRest(room) {
     if (room.used) return;
     room.used = true;
-    healParty(this.state.party, room.healAmount);
+    // No Rest mutation blocks healing
+    if (this.state.activeMutation === 'ironman') {
+      this.addLog('info', 'The party tries to rest but the curse prevents recovery.');
+      return;
+    }
+    const restBonus = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'rest_power');
+    healParty(this.state.party, room.healAmount + restBonus);
     this.addLog('heal', 'The party rests and recovers some HP and MP.');
+  }
+
+  handleTrap(room) {
+    if (room.resolved) return;
+    room.resolved = true;
+
+    const trap = room.trap;
+    this.addLog('damage', trap.text);
+
+    const trapReduction = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'trap_sense');
+    const mult = 1 - trapReduction;
+
+    switch (trap.effect) {
+      case 'damage_all': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            const dmg = Math.max(1, Math.floor(char.maxHp * trap.value * mult));
+            char.hp = Math.max(1, char.hp - dmg);
+          }
+        }
+        this.addLog('damage', 'The entire party takes damage!');
+        break;
+      }
+      case 'damage_one': {
+        const alive = this.state.party.filter((c) => c.alive);
+        if (alive.length > 0) {
+          const target = alive[Math.floor(Math.random() * alive.length)];
+          const dmg = Math.max(1, Math.floor(target.maxHp * trap.value * mult));
+          target.hp = Math.max(1, target.hp - dmg);
+          this.addLog('damage', `${target.name} takes ${dmg} damage from the trap!`);
+        }
+        break;
+      }
+      case 'poison_all': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            const dmg = Math.max(1, Math.floor(char.maxHp * trap.value * mult));
+            char.hp = Math.max(1, char.hp - dmg);
+          }
+        }
+        this.addLog('damage', 'The party is poisoned! Everyone takes damage.');
+        break;
+      }
+      case 'debuff_stats': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            const debuffAmt = Math.max(1, Math.floor(char[trap.stat] * trap.value * mult));
+            char.buffs.push({
+              stat: trap.stat,
+              amount: -debuffAmt,
+              turns: trap.duration,
+              name: 'Trap Curse',
+            });
+          }
+        }
+        this.addLog('info', `The party's ${trap.stat.toUpperCase()} is reduced by the trap!`);
+        break;
+      }
+      case 'drain_mp': {
+        for (const char of this.state.party) {
+          if (char.alive) {
+            const drain = Math.floor(char.maxMp * trap.value * mult);
+            char.mp = Math.max(0, char.mp - drain);
+          }
+        }
+        this.addLog('info', 'The party loses MP!');
+        break;
+      }
+    }
   }
 
   completeFloor() {
@@ -383,11 +606,23 @@ export class GameEngine {
       this.state.stats.highestFloor = nextFloorNum;
     }
 
+    // Check mutation challenge completion
+    if (this.state.activeMutation) {
+      const mutation = MUTATIONS.find((m) => m.id === this.state.activeMutation);
+      if (mutation && nextFloorNum >= mutation.goalFloor) {
+        if (!this.state.stats.challengesCompleted) this.state.stats.challengesCompleted = {};
+        if (!this.state.stats.challengesCompleted[mutation.id]) {
+          this.state.stats.challengesCompleted[mutation.id] = true;
+          this.addLog('important', `CHALLENGE COMPLETE: ${mutation.name}! Reached floor ${mutation.goalFloor}!`);
+        }
+      }
+    }
+
     // If boss floor, go to safe room
     if (floor.isBossFloor) {
       this.addLog('important', `Floor ${floor.number} cleared! Boss defeated!`);
       this.state.gamePhase = 'safeRoom';
-      this.state.shop = generateShop(nextFloorNum, this.state.party, this.getShopTierBonus());
+      this.state.shop = generateShop(nextFloorNum, this.state.party, this.getShopTierBonus(), this.getEnchantLuckBonus());
       this.pause();
       this.addLog('important', 'The party finds a safe room. A merchant awaits.');
     }
@@ -407,6 +642,13 @@ export class GameEngine {
 
   continueExploring() {
     if (this.state.gamePhase === 'safeRoom') {
+      // Safe room rest bonus (heal the party a bit)
+      if (this.state.activeMutation !== 'ironman') {
+        const restBonus = getPrestigeUpgradeValue(this.state.prestige.upgrades, 'rest_power');
+        if (restBonus > 0) {
+          healParty(this.state.party, restBonus * 0.5);
+        }
+      }
       this.state.lastSafeRoomLogIndex = this.state.log.length;
       this.state.gamePhase = 'exploring';
       this.resume();
@@ -446,6 +688,7 @@ export class GameEngine {
     };
     this.state.inventory = { gold: startingGold, items: [] };
     this.state.shop = [];
+    this.state.activeMutation = null;
     this.state.gamePhase = 'exploring';
     this.state.log = [];
     this.state.lastSafeRoomLogIndex = 0;
@@ -518,6 +761,26 @@ export class GameEngine {
       }
     }
 
+    // Starting level
+    const startLevel = getPrestigeUpgradeValue(upgrades, 'starting_level');
+    if (startLevel > 0) {
+      for (const char of party) {
+        for (let i = 0; i < startLevel; i++) {
+          char.level++;
+          const growths = CLASSES[char.class].growths;
+          char.maxHp += growths.hp;
+          char.maxMp += growths.mp;
+          char.atk += growths.atk;
+          char.def += growths.def;
+          char.spd += growths.spd;
+          char.mag += growths.mag;
+          char.skillPoints++;
+        }
+        char.hp = char.maxHp;
+        char.mp = char.maxMp;
+      }
+    }
+
     // Stat bonuses from upgrades
     const hpMult = getPrestigeUpgradeValue(upgrades, 'vitality');
     const atkMult = getPrestigeUpgradeValue(upgrades, 'might');
@@ -533,10 +796,29 @@ export class GameEngine {
       if (defMult > 0) char.def = Math.floor(char.def * (1 + defMult));
       if (magMult > 0) char.mag = Math.floor(char.mag * (1 + magMult));
     }
+
+    // Apply synergy stat bonuses
+    const synergyBonuses = getSynergyBonuses(party);
+    const synergyPower = getPrestigeUpgradeValue(upgrades, 'synergy_power');
+    for (const char of party) {
+      if (synergyBonuses.hp > 0) {
+        const bonus = synergyBonuses.hp * (1 + synergyPower);
+        char.maxHp = Math.floor(char.maxHp * (1 + bonus));
+        char.hp = char.maxHp;
+      }
+      if (synergyBonuses.atk > 0) char.atk = Math.floor(char.atk * (1 + synergyBonuses.atk * (1 + synergyPower)));
+      if (synergyBonuses.def > 0) char.def = Math.floor(char.def * (1 + synergyBonuses.def * (1 + synergyPower)));
+      if (synergyBonuses.spd > 0) char.spd = Math.floor(char.spd * (1 + synergyBonuses.spd * (1 + synergyPower)));
+      if (synergyBonuses.mag > 0) char.mag = Math.floor(char.mag * (1 + synergyBonuses.mag * (1 + synergyPower)));
+    }
   }
 
   getShopTierBonus() {
     return getPrestigeUpgradeValue(this.state.prestige.upgrades, 'shop_tier');
+  }
+
+  getEnchantLuckBonus() {
+    return getPrestigeUpgradeValue(this.state.prestige.upgrades, 'enchant_luck');
   }
 
   hasProdigyUpgrade() {
@@ -580,6 +862,7 @@ export class GameEngine {
     };
     this.state.inventory = { gold: startingGold, items: [] };
     this.state.shop = [];
+    this.state.activeMutation = null;
     this.state.gamePhase = 'exploring';
     this.state.log = [];
     this.state.lastSafeRoomLogIndex = 0;
@@ -590,6 +873,24 @@ export class GameEngine {
     this.addLog('info', 'A new adventure begins with ancient wisdom...');
 
     this.resume();
+    this.notify();
+  }
+
+  activateMutation(mutationId) {
+    if (mutationId === null) {
+      this.state.activeMutation = null;
+      this.addLog('info', 'No challenge mutation active.');
+      this.notify();
+      return;
+    }
+    const mutation = MUTATIONS.find((m) => m.id === mutationId);
+    if (!mutation) return;
+    this.state.activeMutation = mutationId;
+    // Apply party effects
+    if (mutation.applyToParty) {
+      mutation.applyToParty(this.state.party);
+    }
+    this.addLog('important', `Challenge activated: ${mutation.name}! ${mutation.description}`);
     this.notify();
   }
 

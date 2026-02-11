@@ -857,6 +857,46 @@ export const PRESTIGE_UPGRADES = [
     costs: [5, 12, 25],
     values: [1, 2, 3],
   },
+  {
+    id: 'enchant_luck',
+    name: 'Enchanter\'s Eye',
+    description: 'Higher chance of finding enchanted items.',
+    maxLevel: 3,
+    costs: [4, 10, 22],
+    values: [0.05, 0.12, 0.20],
+  },
+  {
+    id: 'trap_sense',
+    name: 'Trap Sense',
+    description: 'Reduce damage from dungeon traps.',
+    maxLevel: 3,
+    costs: [3, 8, 16],
+    values: [0.20, 0.40, 0.60],
+  },
+  {
+    id: 'rest_power',
+    name: 'Deep Rest',
+    description: 'Rest rooms and safe rooms restore more HP/MP.',
+    maxLevel: 3,
+    costs: [3, 8, 16],
+    values: [0.10, 0.20, 0.35],
+  },
+  {
+    id: 'synergy_power',
+    name: 'Bonds of Fellowship',
+    description: 'Party synergy bonuses are stronger.',
+    maxLevel: 3,
+    costs: [5, 12, 25],
+    values: [0.25, 0.50, 1.00],
+  },
+  {
+    id: 'starting_level',
+    name: 'Head Start',
+    description: 'Party members start at a higher level.',
+    maxLevel: 3,
+    costs: [8, 20, 40],
+    values: [2, 4, 6],
+  },
 ];
 
 /**
@@ -1012,6 +1052,137 @@ export const ACHIEVEMENTS = [
     condition: (stats) => stats.monstersKilled >= 500,
     reward: 'Unlocks the Berserker class.',
   },
+  // Challenge mutation achievements
+  {
+    id: 'challenge_glass_cannon',
+    name: 'Glass Half Empty',
+    description: 'Reach floor 15 with Glass Cannon mutation active.',
+    condition: (stats) => stats.challengesCompleted && stats.challengesCompleted.glass_cannon,
+    reward: '+8% ATK, +5% MAG',
+  },
+  {
+    id: 'challenge_cursed',
+    name: 'Unbreakable',
+    description: 'Reach floor 15 with Cursed Dungeon mutation active.',
+    condition: (stats) => stats.challengesCompleted && stats.challengesCompleted.cursed,
+    reward: '+5% all stats',
+  },
+  {
+    id: 'challenge_speed_run',
+    name: 'Lightning Reflexes',
+    description: 'Reach floor 15 with Speed Demons mutation active.',
+    condition: (stats) => stats.challengesCompleted && stats.challengesCompleted.speed_run,
+    reward: '+10% SPD',
+  },
+  {
+    id: 'challenge_treasure_hunter',
+    name: 'Midas Touch',
+    description: 'Reach floor 15 with Treasure Hunter mutation active.',
+    condition: (stats) => stats.challengesCompleted && stats.challengesCompleted.treasure_hunter,
+    reward: '+15% gold find',
+  },
+  {
+    id: 'challenge_fragile_foes',
+    name: 'Overkill',
+    description: 'Reach floor 15 with Fragile Foes mutation active.',
+    condition: (stats) => stats.challengesCompleted && stats.challengesCompleted.fragile_foes,
+    reward: '+5% ATK, +5% SPD',
+  },
+  {
+    id: 'challenge_ironman',
+    name: 'Iron Will',
+    description: 'Reach floor 15 with No Rest mutation active.',
+    condition: (stats) => stats.challengesCompleted && stats.challengesCompleted.ironman,
+    reward: '+10% HP, +10% DEF',
+  },
+];
+
+// Challenge mutation definitions
+export const MUTATIONS = [
+  {
+    id: 'glass_cannon',
+    name: 'Glass Cannon',
+    description: 'Party has -50% HP but +50% ATK.',
+    applyToParty: (party) => {
+      for (const c of party) {
+        c.maxHp = Math.floor(c.maxHp * 0.5);
+        c.hp = c.maxHp;
+        c.atk = Math.floor(c.atk * 1.5);
+      }
+    },
+    applyToEnemies: null,
+    goalFloor: 15,
+    achievementId: 'challenge_glass_cannon',
+  },
+  {
+    id: 'cursed',
+    name: 'Cursed Dungeon',
+    description: 'All enemies have +30% stats.',
+    applyToParty: null,
+    applyToEnemies: (enemies) => {
+      for (const e of enemies) {
+        e.hp = Math.floor(e.hp * 1.3);
+        e.maxHp = Math.floor(e.maxHp * 1.3);
+        e.atk = Math.floor(e.atk * 1.3);
+        e.def = Math.floor(e.def * 1.3);
+        e.spd = Math.floor(e.spd * 1.3);
+      }
+    },
+    goalFloor: 15,
+    achievementId: 'challenge_cursed',
+  },
+  {
+    id: 'speed_run',
+    name: 'Speed Demons',
+    description: 'Enemies have +50% SPD.',
+    applyToParty: null,
+    applyToEnemies: (enemies) => {
+      for (const e of enemies) {
+        e.spd = Math.floor(e.spd * 1.5);
+      }
+    },
+    goalFloor: 15,
+    achievementId: 'challenge_speed_run',
+  },
+  {
+    id: 'treasure_hunter',
+    name: 'Treasure Hunter',
+    description: '+60% gold found, but party has -25% ATK.',
+    applyToParty: (party) => {
+      for (const c of party) {
+        c.atk = Math.floor(c.atk * 0.75);
+      }
+    },
+    applyToEnemies: null,
+    goldMultiplier: 1.6,
+    goalFloor: 15,
+    achievementId: 'challenge_treasure_hunter',
+  },
+  {
+    id: 'fragile_foes',
+    name: 'Fragile Foes',
+    description: 'Enemies have -40% HP but +60% ATK.',
+    applyToParty: null,
+    applyToEnemies: (enemies) => {
+      for (const e of enemies) {
+        e.hp = Math.floor(e.hp * 0.6);
+        e.maxHp = Math.floor(e.maxHp * 0.6);
+        e.atk = Math.floor(e.atk * 1.6);
+      }
+    },
+    goalFloor: 15,
+    achievementId: 'challenge_fragile_foes',
+  },
+  {
+    id: 'ironman',
+    name: 'No Rest',
+    description: 'Rest rooms and healing events do nothing.',
+    applyToParty: null,
+    applyToEnemies: null,
+    disableHealing: true,
+    goalFloor: 15,
+    achievementId: 'challenge_ironman',
+  },
 ];
 
 /**
@@ -1084,6 +1255,31 @@ export function getAchievementBonuses(unlockedIds) {
       case 'killer_500':
         bonuses.atk += 0.1;
         bonuses.hp += 0.05;
+        break;
+      case 'challenge_glass_cannon':
+        bonuses.atk += 0.08;
+        bonuses.mag += 0.05;
+        break;
+      case 'challenge_cursed':
+        bonuses.hp += 0.05;
+        bonuses.atk += 0.05;
+        bonuses.def += 0.05;
+        bonuses.spd += 0.05;
+        bonuses.mag += 0.05;
+        break;
+      case 'challenge_speed_run':
+        bonuses.spd += 0.1;
+        break;
+      case 'challenge_treasure_hunter':
+        bonuses.gold += 0.15;
+        break;
+      case 'challenge_fragile_foes':
+        bonuses.atk += 0.05;
+        bonuses.spd += 0.05;
+        break;
+      case 'challenge_ironman':
+        bonuses.hp += 0.1;
+        bonuses.def += 0.1;
         break;
     }
   }

@@ -1513,3 +1513,124 @@ input {
 .room-title {
   transition: color 0.3s;
 }
+
+/* Trap room dot */
+.floor-progress .room-dot.trap {
+  border-color: var(--accent-orange);
+}
+
+/* Synergy bar */
+.synergy-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.synergy-badge {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-green);
+  border-radius: 3px;
+  color: var(--accent-green);
+}
+
+/* Mutation badge in header */
+.mutation-badge {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-orange);
+  border-radius: 3px;
+  color: var(--accent-orange) !important;
+  font-weight: bold;
+}
+
+/* Mutation section on prestige screen */
+.mutation-section {
+  width: 100%;
+  max-width: 500px;
+  margin-top: 16px;
+}
+
+.mutation-section h2 {
+  color: var(--accent-orange);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.mutation-desc {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.mutation-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mutation-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 10px 12px;
+  transition: border-color 0.2s;
+}
+
+.mutation-card:hover {
+  border-color: var(--accent-orange);
+}
+
+.mutation-card.completed {
+  border-color: var(--accent-green);
+  opacity: 0.8;
+}
+
+.mutation-name {
+  color: var(--accent-orange);
+  font-weight: bold;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.mutation-card.completed .mutation-name {
+  color: var(--accent-green);
+}
+
+.mutation-detail {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.mutation-goal {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  margin-bottom: 6px;
+}
+
+.btn-mutation {
+  border-color: var(--accent-orange) !important;
+  color: var(--accent-orange) !important;
+  width: 100%;
+}
+
+.btn-mutation:hover {
+  background: var(--bg-highlight) !important;
+  color: #eea055 !important;
+  border-color: #eea055 !important;
+}
+
+/* Enchanted item glow */
+.item-name.enchanted {
+  text-shadow: 0 0 4px rgba(212, 168, 68, 0.4);
+}

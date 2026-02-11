@@ -201,6 +201,10 @@ export function getEffectiveStat(char, stat) {
     if (item && item[stat] !== undefined) {
       base += item[stat];
     }
+    // Enchantment flat stat bonuses (spd, mag, atk, def, hp)
+    if (item && item.enchantment && item.enchantment.stat === stat) {
+      base += item.enchantment.value;
+    }
   }
   // Buff bonuses
   for (const buff of char.buffs) {
@@ -211,6 +215,133 @@ export function getEffectiveStat(char, stat) {
   return Math.max(0, base);
 }
 
+/**
+ * Get enchantment bonus value for a specific enchantment stat from all equipped items.
+ * Used for non-flat bonuses like critChance, lifeSteal, poisonChance, goldFind, damageReduction.
+ */
+export function getEnchantmentBonus(char, enchantStat) {
+  let total = 0;
+  for (const slot of ['weapon', 'armor', 'accessory']) {
+    const item = char.equipment[slot];
+    if (item && item.enchantment && item.enchantment.stat === enchantStat) {
+      total += item.enchantment.value;
+    }
+  }
+  return total;
+}
+
 export function resetCharacterId(startId = 1) {
   nextId = startId;
+}
+
+// Party synergy definitions
+export const SYNERGIES = [
+  {
+    id: 'dwarf_brotherhood',
+    name: 'Dwarf Brotherhood',
+    description: '3+ Dwarves: +15% DEF',
+    condition: (party) => party.filter((c) => c.race === 'dwarf').length >= 3,
+    bonuses: { def: 0.15 },
+  },
+  {
+    id: 'elven_grace',
+    name: 'Elven Grace',
+    description: '3+ Elves: +15% SPD, +10% MAG',
+    condition: (party) => party.filter((c) => c.race === 'elf').length >= 3,
+    bonuses: { spd: 0.15, mag: 0.10 },
+  },
+  {
+    id: 'human_resolve',
+    name: 'Human Resolve',
+    description: '3+ Humans: +15% XP',
+    condition: (party) => party.filter((c) => c.race === 'human').length >= 3,
+    bonuses: { xp: 0.15 },
+  },
+  {
+    id: 'goblin_horde',
+    name: 'Goblin Horde',
+    description: '3+ Goblins: +30% gold',
+    condition: (party) => party.filter((c) => c.race === 'goblin').length >= 3,
+    bonuses: { gold: 0.30 },
+  },
+  {
+    id: 'frontline',
+    name: 'Frontline',
+    description: 'Warrior + Paladin: +10% HP, +10% DEF',
+    condition: (party) => {
+      const classes = party.map((c) => c.class);
+      return classes.includes('warrior') && classes.includes('paladin');
+    },
+    bonuses: { hp: 0.10, def: 0.10 },
+  },
+  {
+    id: 'dark_arts',
+    name: 'Dark Arts',
+    description: 'Necromancer + Mage: +15% MAG',
+    condition: (party) => {
+      const classes = party.map((c) => c.class);
+      return classes.includes('necromancer') && classes.includes('mage');
+    },
+    bonuses: { mag: 0.15 },
+  },
+  {
+    id: 'blitz',
+    name: 'Blitz',
+    description: 'Rogue + Monk: +15% SPD, +10% ATK',
+    condition: (party) => {
+      const classes = party.map((c) => c.class);
+      return classes.includes('rogue') && classes.includes('monk');
+    },
+    bonuses: { spd: 0.15, atk: 0.10 },
+  },
+  {
+    id: 'faith_and_steel',
+    name: 'Faith & Steel',
+    description: 'Paladin + Healer: +15% MAG',
+    condition: (party) => {
+      const classes = party.map((c) => c.class);
+      return classes.includes('paladin') && classes.includes('healer');
+    },
+    bonuses: { mag: 0.15 },
+  },
+  {
+    id: 'balanced_party',
+    name: 'Balanced Party',
+    description: '4 unique classes: +5% all stats',
+    condition: (party) => new Set(party.map((c) => c.class)).size >= 4,
+    bonuses: { hp: 0.05, atk: 0.05, def: 0.05, spd: 0.05, mag: 0.05 },
+  },
+  {
+    id: 'rage_duo',
+    name: 'Rage Duo',
+    description: 'Berserker + Warrior: +10% ATK, +10% HP',
+    condition: (party) => {
+      const classes = party.map((c) => c.class);
+      return classes.includes('berserker') && classes.includes('warrior');
+    },
+    bonuses: { atk: 0.10, hp: 0.10 },
+  },
+];
+
+/**
+ * Get active synergies for a party.
+ * Returns array of { id, name, description, bonuses } for all active synergies.
+ */
+export function getActiveSynergies(party) {
+  return SYNERGIES.filter((s) => s.condition(party));
+}
+
+/**
+ * Get combined synergy bonuses for a party.
+ * Returns { hp, atk, def, spd, mag, xp, gold } multipliers.
+ */
+export function getSynergyBonuses(party) {
+  const bonuses = { hp: 0, atk: 0, def: 0, spd: 0, mag: 0, xp: 0, gold: 0 };
+  const active = getActiveSynergies(party);
+  for (const syn of active) {
+    for (const [stat, val] of Object.entries(syn.bonuses)) {
+      bonuses[stat] = (bonuses[stat] || 0) + val;
+    }
+  }
+  return bonuses;
 }

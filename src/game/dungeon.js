@@ -1,6 +1,6 @@
 import { randInt, randChoice, shuffle, floorScaling } from '../utils/math.js';
 
-const ROOM_TYPES = ['combat', 'combat', 'combat', 'treasure', 'event', 'rest'];
+const ROOM_TYPES = ['combat', 'combat', 'combat', 'treasure', 'event', 'rest', 'trap'];
 
 export const MONSTER_TYPES = [
   { name: 'Slime', baseHp: 15, baseAtk: 5, baseDef: 2, baseSpd: 3, xp: 10,
@@ -46,7 +46,7 @@ export const EVENT_TYPES = [
     value: 0.3,
   },
   {
-    id: 'trap',
+    id: 'dart_trap',
     text: 'A hidden trap springs! Darts fly from the walls!',
     effect: 'damage',
     value: 0.15,
@@ -69,6 +69,111 @@ export const EVENT_TYPES = [
     effect: 'buff_def',
     value: 3,
   },
+  {
+    id: 'gambling_den',
+    text: 'A shady figure beckons from behind a makeshift table. "Care to wager?"',
+    effect: 'gamble',
+    value: 0,
+  },
+  {
+    id: 'ancient_library',
+    text: 'Dusty tomes line the walls. The party takes a moment to study.',
+    effect: 'skill_xp',
+    value: 3,
+  },
+  {
+    id: 'cursed_chest',
+    text: 'A chest radiates dark energy. Something valuable lies within... at a cost.',
+    effect: 'cursed_treasure',
+    value: 0,
+  },
+  {
+    id: 'spirit_guide',
+    text: 'A spectral figure materializes and shares wisdom from beyond.',
+    effect: 'bonus_xp',
+    value: 0.5,
+  },
+  {
+    id: 'campfire',
+    text: 'The remains of a campfire still glow. The party warms up and shares stories.',
+    effect: 'buff_all',
+    value: 2,
+  },
+  {
+    id: 'mirror_pool',
+    text: 'A still pool reflects not faces, but potential. Each member glimpses their future self.',
+    effect: 'buff_spd',
+    value: 3,
+  },
+  {
+    id: 'sacrificial_altar',
+    text: 'An altar demands an offering. Gold glints in the cracks. Pay tribute or walk away?',
+    effect: 'sacrifice_gold',
+    value: 0,
+  },
+];
+
+export const TRAP_TYPES = [
+  {
+    id: 'spike_pit',
+    text: 'The floor gives way! Spikes line the bottom of the pit!',
+    effect: 'damage_all',
+    value: 0.2,
+  },
+  {
+    id: 'poison_gas',
+    text: 'Green gas hisses from vents in the walls. It burns the lungs!',
+    effect: 'poison_all',
+    value: 0.08,
+    duration: 3,
+  },
+  {
+    id: 'cursed_rune',
+    text: 'Ancient runes flare to life underfoot! A curse settles on the party.',
+    effect: 'debuff_stats',
+    stat: 'atk',
+    value: 0.15,
+    duration: 8,
+  },
+  {
+    id: 'mana_drain',
+    text: 'Crystals embedded in the walls pulse and drain magical energy!',
+    effect: 'drain_mp',
+    value: 0.4,
+  },
+  {
+    id: 'arrow_volley',
+    text: 'A tripwire! Arrows rain from hidden slits in the ceiling!',
+    effect: 'damage_all',
+    value: 0.15,
+  },
+  {
+    id: 'cave_in',
+    text: 'The ceiling trembles and rocks crash down! One member takes the worst of it.',
+    effect: 'damage_one',
+    value: 0.35,
+  },
+  {
+    id: 'hex_ward',
+    text: 'A warding glyph blazes with violet light. Defense feels... thinner.',
+    effect: 'debuff_stats',
+    stat: 'def',
+    value: 0.15,
+    duration: 8,
+  },
+];
+
+export const ENCHANTMENTS = [
+  { id: 'keen', name: 'Keen', description: '+crit chance', stat: 'critChance', value: 0.1 },
+  { id: 'vampiric', name: 'Vampiric', description: 'life steal on hit', stat: 'lifeSteal', value: 0.08 },
+  { id: 'fortified', name: 'Fortified', description: '+HP', stat: 'hp', value: 15 },
+  { id: 'swift', name: 'Swift', description: '+SPD', stat: 'spd', value: 3 },
+  { id: 'venomous', name: 'Venomous', description: 'chance to poison', stat: 'poisonChance', value: 0.2 },
+  { id: 'gilded', name: 'Gilded', description: '+gold find', stat: 'goldFind', value: 0.15 },
+  { id: 'arcane', name: 'Arcane', description: '+MAG', stat: 'mag', value: 3 },
+  { id: 'brutal', name: 'Brutal', description: '+ATK', stat: 'atk', value: 3 },
+  { id: 'warding', name: 'Warding', description: '+DEF', stat: 'def', value: 3 },
+  { id: 'resilient', name: 'Resilient', description: 'damage reduction', stat: 'damageReduction', value: 0.05 },
 ];
 
 export const TREASURE_ITEMS = [
@@ -252,6 +357,10 @@ function generateRoom(type, floorNum) {
       room.healAmount = 0.25;
       room.used = false;
       break;
+    case 'trap':
+      room.trap = { ...randChoice(TRAP_TYPES) };
+      room.resolved = false;
+      break;
     default:
       break;
   }
@@ -303,11 +412,25 @@ function generateEnemies(floorNum) {
   });
 }
 
-function generateTreasure(floorNum) {
+function generateTreasure(floorNum, enchantLuckBonus = 0) {
   const maxTier = Math.min(4, 1 + Math.floor(floorNum / 5));
   const available = TREASURE_ITEMS.filter((item) => item.tier <= maxTier);
   const item = randChoice(available);
-  return { ...item, id: Date.now() + Math.random() };
+  const result = { ...item, id: Date.now() + Math.random() };
+  maybeEnchant(result, floorNum, enchantLuckBonus);
+  return result;
+}
+
+/**
+ * Roll for an enchantment on an item. Higher floors and tiers increase the chance.
+ */
+function maybeEnchant(item, floorNum, enchantLuckBonus = 0) {
+  const baseChance = 0.05 + (floorNum * 0.01) + (item.tier * 0.03) + enchantLuckBonus;
+  if (Math.random() < Math.min(0.5, baseChance)) {
+    const ench = randChoice(ENCHANTMENTS);
+    item.enchantment = { ...ench };
+    item.name = `${ench.name} ${item.name}`;
+  }
 }
 
 /**
@@ -339,7 +462,7 @@ export function getEquipDelta(char, item) {
  * Generate shop inventory for a given floor and party.
  * Returns an array of items biased toward what the party can use.
  */
-export function generateShop(floorNum, party, shopTierBonus = 0) {
+export function generateShop(floorNum, party, shopTierBonus = 0, enchantLuckBonus = 0) {
   const maxTier = Math.min(4, 1 + Math.floor(floorNum / 5) + shopTierBonus);
   const available = TREASURE_ITEMS.filter((item) => item.tier <= maxTier);
 
@@ -363,7 +486,12 @@ export function generateShop(floorNum, party, shopTierBonus = 0) {
     const key = template.name + template.slot;
     if (!used.has(key)) {
       used.add(key);
-      items.push({ ...template, id: Date.now() + Math.random() + i });
+      const item = { ...template, id: Date.now() + Math.random() + i };
+      maybeEnchant(item, floorNum, enchantLuckBonus);
+      if (item.enchantment) {
+        item.price = Math.floor(item.price * 1.4);
+      }
+      items.push(item);
     }
   }
 
@@ -374,7 +502,12 @@ export function generateShop(floorNum, party, shopTierBonus = 0) {
     const key = template.name + template.slot;
     if (!used.has(key)) {
       used.add(key);
-      items.push({ ...template, id: Date.now() + Math.random() + items.length });
+      const item = { ...template, id: Date.now() + Math.random() + items.length };
+      maybeEnchant(item, floorNum, enchantLuckBonus);
+      if (item.enchantment) {
+        item.price = Math.floor(item.price * 1.4);
+      }
+      items.push(item);
     }
   }
 
