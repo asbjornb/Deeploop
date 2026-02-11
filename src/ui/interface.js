@@ -573,12 +573,14 @@ export class GameUI {
     const delta = getEquipDelta(char, item);
     const firstName = char.name.split(' ')[0];
 
+    const charLabel = `${firstName} (${CLASSES[char.class].name})`;
+
     if (!eligible) {
       const reason = [];
       if (item.classReq && !item.classReq.includes(char.class)) reason.push(CLASSES[char.class].name);
       if (item.levelReq && char.level < item.levelReq) reason.push(`Lv.${item.levelReq}`);
       row.innerHTML = `
-        <span class="char-label">${firstName}</span>
+        <span class="char-label">${charLabel}</span>
         <span class="equip-blocked">Can't use${reason.length ? ' (' + reason.join(', ') + ')' : ''}</span>
       `;
       row.classList.add('ineligible');
@@ -587,7 +589,7 @@ export class GameUI {
 
     const slotLabel = hasSlot ? 'empty slot' : char.equipment[item.slot].name;
     row.innerHTML = `
-      <span class="char-label">${firstName}</span>
+      <span class="char-label">${charLabel}</span>
       <span class="slot-info">${hasSlot ? '<em>empty slot</em>' : slotLabel}</span>
       <span class="delta-info">${this.formatDelta(delta)}</span>
     `;
@@ -764,6 +766,18 @@ export class GameUI {
           charRows.appendChild(row);
         }
         card.appendChild(charRows);
+
+        // Sell button
+        const sellPrice = Math.floor(item.price * 0.5);
+        const sellBtn = document.createElement('button');
+        sellBtn.className = 'btn-sell';
+        sellBtn.textContent = `Sell (${sellPrice}g)`;
+        sellBtn.addEventListener('click', () => {
+          this.engine.sellItem(item);
+          this.closeModal();
+          this.showInventoryModal(this.engine.state);
+        });
+        card.appendChild(sellBtn);
 
         content.appendChild(card);
       }

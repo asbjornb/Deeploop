@@ -713,6 +713,19 @@ export class GameEngine {
     return true;
   }
 
+  sellItem(item) {
+    const idx = this.state.inventory.items.indexOf(item);
+    if (idx === -1) return false;
+
+    const sellPrice = Math.floor(item.price * 0.5);
+    this.state.inventory.items.splice(idx, 1);
+    this.state.inventory.gold += sellPrice;
+    this.state.stats.totalGold += sellPrice;
+    this.addLog('gold', `Sold ${item.name} for ${sellPrice} gold.`);
+    this.notify();
+    return true;
+  }
+
   equipItemOnCharacter(charId, item) {
     const char = this.state.party.find((c) => c.id === charId);
     if (!char) return;
