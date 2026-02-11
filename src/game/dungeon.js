@@ -3,24 +3,39 @@ import { randInt, randChoice, shuffle, floorScaling } from '../utils/math.js';
 const ROOM_TYPES = ['combat', 'combat', 'combat', 'treasure', 'event', 'rest'];
 
 export const MONSTER_TYPES = [
-  { name: 'Slime', baseHp: 15, baseAtk: 5, baseDef: 2, baseSpd: 3, xp: 10 },
-  { name: 'Rat', baseHp: 10, baseAtk: 7, baseDef: 1, baseSpd: 8, xp: 8 },
-  { name: 'Skeleton', baseHp: 20, baseAtk: 8, baseDef: 5, baseSpd: 4, xp: 15 },
-  { name: 'Bat', baseHp: 8, baseAtk: 6, baseDef: 1, baseSpd: 12, xp: 7 },
-  { name: 'Goblin Scout', baseHp: 18, baseAtk: 9, baseDef: 3, baseSpd: 7, xp: 12 },
-  { name: 'Spider', baseHp: 12, baseAtk: 10, baseDef: 2, baseSpd: 9, xp: 11 },
-  { name: 'Zombie', baseHp: 30, baseAtk: 6, baseDef: 3, baseSpd: 2, xp: 14 },
-  { name: 'Ghost', baseHp: 15, baseAtk: 11, baseDef: 1, baseSpd: 10, xp: 16 },
-  { name: 'Orc', baseHp: 35, baseAtk: 12, baseDef: 7, baseSpd: 5, xp: 20 },
-  { name: 'Mimic', baseHp: 25, baseAtk: 14, baseDef: 8, baseSpd: 6, xp: 25 },
+  { name: 'Slime', baseHp: 15, baseAtk: 5, baseDef: 2, baseSpd: 3, xp: 10,
+    ability: { name: 'Acid Splash', chance: 0.25, type: 'single_debuff', power: 0.8, debuffStat: 'def', debuffRatio: 0.2, debuffDuration: 2 } },
+  { name: 'Rat', baseHp: 10, baseAtk: 7, baseDef: 1, baseSpd: 8, xp: 8,
+    ability: { name: 'Frenzy', chance: 0.3, type: 'multi', power: 0.7, hits: 2 } },
+  { name: 'Skeleton', baseHp: 20, baseAtk: 8, baseDef: 5, baseSpd: 4, xp: 15,
+    ability: { name: 'Bone Throw', chance: 0.25, type: 'snipe', power: 1.3 } },
+  { name: 'Bat', baseHp: 8, baseAtk: 6, baseDef: 1, baseSpd: 12, xp: 7,
+    ability: { name: 'Screech', chance: 0.2, type: 'aoe', power: 0.4 } },
+  { name: 'Goblin Scout', baseHp: 18, baseAtk: 9, baseDef: 3, baseSpd: 7, xp: 12,
+    ability: { name: 'Cheap Shot', chance: 0.3, type: 'single_stun', power: 1.0, stunChance: 0.4 } },
+  { name: 'Spider', baseHp: 12, baseAtk: 10, baseDef: 2, baseSpd: 9, xp: 11,
+    ability: { name: 'Web Snare', chance: 0.25, type: 'single_stun', power: 0.5, stunChance: 0.7 } },
+  { name: 'Zombie', baseHp: 30, baseAtk: 6, baseDef: 3, baseSpd: 2, xp: 14,
+    ability: { name: 'Infectious Grasp', chance: 0.2, type: 'single_debuff', power: 0.8, debuffStat: 'spd', debuffRatio: 0.25, debuffDuration: 2 } },
+  { name: 'Ghost', baseHp: 15, baseAtk: 11, baseDef: 1, baseSpd: 10, xp: 16,
+    ability: { name: 'Terrify', chance: 0.25, type: 'single_debuff', power: 0.6, debuffStat: 'atk', debuffRatio: 0.2, debuffDuration: 2 } },
+  { name: 'Orc', baseHp: 35, baseAtk: 12, baseDef: 7, baseSpd: 5, xp: 20,
+    ability: { name: 'Crushing Blow', chance: 0.3, type: 'heavy', power: 1.8 } },
+  { name: 'Mimic', baseHp: 25, baseAtk: 14, baseDef: 8, baseSpd: 6, xp: 25,
+    ability: { name: 'Chomp', chance: 0.35, type: 'multi', power: 0.9, hits: 2 } },
 ];
 
 export const BOSS_TYPES = [
-  { name: 'Dragon Hatchling', baseHp: 80, baseAtk: 18, baseDef: 12, baseSpd: 8, xp: 100 },
-  { name: 'Lich King', baseHp: 60, baseAtk: 22, baseDef: 8, baseSpd: 10, xp: 120 },
-  { name: 'Spider Queen', baseHp: 70, baseAtk: 16, baseDef: 10, baseSpd: 14, xp: 110 },
-  { name: 'Demon Lord', baseHp: 90, baseAtk: 20, baseDef: 14, baseSpd: 7, xp: 150 },
-  { name: 'Ancient Golem', baseHp: 120, baseAtk: 14, baseDef: 20, baseSpd: 3, xp: 130 },
+  { name: 'Dragon Hatchling', baseHp: 80, baseAtk: 18, baseDef: 12, baseSpd: 8, xp: 100,
+    ability: { name: 'Fire Breath', chance: 0.4, type: 'aoe', power: 0.8 } },
+  { name: 'Lich King', baseHp: 60, baseAtk: 22, baseDef: 8, baseSpd: 10, xp: 120,
+    ability: { name: 'Dark Bolt', chance: 0.45, type: 'drain', power: 1.5, healRatio: 0.3 } },
+  { name: 'Spider Queen', baseHp: 70, baseAtk: 16, baseDef: 10, baseSpd: 14, xp: 110,
+    ability: { name: 'Venom Cloud', chance: 0.35, type: 'aoe_debuff', power: 0.5, debuffStat: 'def', debuffRatio: 0.15, debuffDuration: 2 } },
+  { name: 'Demon Lord', baseHp: 90, baseAtk: 20, baseDef: 14, baseSpd: 7, xp: 150,
+    ability: { name: 'Hellfire', chance: 0.4, type: 'aoe_debuff', power: 1.0, debuffStat: 'def', debuffRatio: 0.2, debuffDuration: 2 } },
+  { name: 'Ancient Golem', baseHp: 120, baseAtk: 14, baseDef: 20, baseSpd: 3, xp: 130,
+    ability: { name: 'Earthquake', chance: 0.35, type: 'aoe_stun', power: 0.7, stunChance: 0.3 } },
 ];
 
 export const EVENT_TYPES = [
@@ -225,6 +240,7 @@ function generateBossRoom(floorNum) {
         spd: Math.floor(template.baseSpd * scaling),
         xp: Math.floor(template.xp * scaling),
         isBoss: true,
+        ability: template.ability || null,
       },
     ],
   };
@@ -245,6 +261,7 @@ function generateEnemies(floorNum) {
       spd: Math.floor(template.baseSpd * scaling),
       xp: Math.floor(template.xp * scaling),
       isBoss: false,
+      ability: template.ability || null,
     };
   });
 }
