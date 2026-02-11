@@ -56,6 +56,7 @@ export function createInitialState() {
     },
     gamePhase: 'exploring',
     log: [{ type: 'important', text: 'The party enters the dungeon...' }],
+    lastSafeRoomLogIndex: 0,
     tickCount: 0,
   };
 }
@@ -84,6 +85,7 @@ export class GameEngine {
     this.state = saved;
     // Restore missing fields from old saves
     if (!this.state.shop) this.state.shop = [];
+    if (this.state.lastSafeRoomLogIndex == null) this.state.lastSafeRoomLogIndex = 0;
     for (const char of this.state.party) {
       if (!char.buffs) char.buffs = [];
     }
@@ -394,6 +396,7 @@ export class GameEngine {
 
   continueExploring() {
     if (this.state.gamePhase === 'safeRoom') {
+      this.state.lastSafeRoomLogIndex = this.state.log.length;
       this.state.gamePhase = 'exploring';
       this.resume();
       this.addLog('info', 'The party ventures deeper...');
@@ -428,6 +431,7 @@ export class GameEngine {
     this.state.shop = [];
     this.state.gamePhase = 'exploring';
     this.state.log = [];
+    this.state.lastSafeRoomLogIndex = 0;
 
     this.addLog('important', 'A new adventure begins...');
     this.addLog('info', `Floor 1: ${this.state.dungeon.floor.description}`);
@@ -517,6 +521,7 @@ export class GameEngine {
     this.state.shop = [];
     this.state.gamePhase = 'exploring';
     this.state.log = [];
+    this.state.lastSafeRoomLogIndex = 0;
 
     this.addLog('important', `PRESTIGE ${this.state.prestige.level}! Earned ${points} prestige points.`);
     this.addLog('info', `Bonuses: +${(bonus.statBonus * 100).toFixed(0)}% stats, +${(bonus.xpBonus * 100).toFixed(0)}% XP, +${(bonus.goldBonus * 100).toFixed(0)}% gold`);
@@ -541,7 +546,9 @@ export class GameEngine {
     this.state.log.push({ type, text });
     // Keep log manageable
     if (this.state.log.length > 200) {
+      const trimCount = this.state.log.length - 100;
       this.state.log = this.state.log.slice(-100);
+      this.state.lastSafeRoomLogIndex = Math.max(0, this.state.lastSafeRoomLogIndex - trimCount);
     }
   }
 
