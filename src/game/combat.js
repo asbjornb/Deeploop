@@ -178,7 +178,7 @@ function executeCharacterTurn(char, party, enemies) {
         const isCrit = skill.guaranteedCrit || (skill.critBonus && Math.random() < skill.critBonus);
         if (isCrit) {
           dmg = Math.floor(dmg * 1.5);
-          log.push({ type: 'damage', text: `CRITICAL! ${char.name} uses ${skill.name} on ${target.name} for ${dmg} damage!` });
+          log.push({ type: 'crit', text: `CRITICAL! ${char.name} uses ${skill.name} on ${target.name} for ${dmg} damage!` });
         } else {
           log.push({ type: 'damage', text: `${char.name} uses ${skill.name} on ${target.name} for ${dmg} damage!` });
         }

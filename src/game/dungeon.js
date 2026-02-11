@@ -118,6 +118,43 @@ export const TREASURE_ITEMS = [
   // Tier 4 accessories
   { name: 'Crown of Stars', slot: 'accessory', atk: 5, def: 5, spd: 5, mag: 5, tier: 4, price: 450, levelReq: 7 },
 
+  // Tier 1 general accessories
+  { name: 'Bone Charm', slot: 'accessory', atk: 1, def: 1, spd: 1, mag: 0, tier: 1, price: 20 },
+  { name: 'Lucky Coin', slot: 'accessory', atk: 0, def: 0, spd: 2, mag: 1, tier: 1, price: 25 },
+
+  // Tier 2 general accessories
+  { name: 'Bloodstone Ring', slot: 'accessory', atk: 3, def: 0, spd: 0, mag: 3, tier: 2, price: 65 },
+  { name: 'Windwalker Boots', slot: 'accessory', atk: 0, def: 1, spd: 5, mag: 0, tier: 2, price: 70 },
+  { name: 'Toughness Amulet', slot: 'accessory', atk: 0, def: 4, spd: 0, mag: 1, tier: 2, price: 65 },
+
+  // Tier 2 trade-off items
+  { name: 'Berserker Band', slot: 'accessory', atk: 6, def: -2, spd: 0, mag: 0, tier: 2, price: 60 },
+  { name: 'Glass Cannon Staff', slot: 'weapon', atk: 0, def: -2, spd: 0, mag: 9, tier: 2, price: 75, classReq: ['mage', 'necromancer'] },
+
+  // Tier 3 general accessories
+  { name: 'Ring of Thorns', slot: 'accessory', atk: 4, def: 3, spd: 0, mag: 0, tier: 3, price: 170, levelReq: 4 },
+  { name: 'Cloak of Shadows', slot: 'accessory', atk: 0, def: 2, spd: 6, mag: 2, tier: 3, price: 175, levelReq: 4 },
+  { name: 'Mindstone Pendant', slot: 'accessory', atk: 0, def: 0, spd: 2, mag: 8, tier: 3, price: 180, levelReq: 4, classReq: ['mage', 'healer', 'necromancer'] },
+
+  // Tier 3 trade-off items
+  { name: 'Cursed Greatsword', slot: 'weapon', atk: 14, def: -3, spd: -2, mag: 0, tier: 3, price: 180, classReq: ['warrior', 'berserker'], levelReq: 5 },
+  { name: 'Voidheart Amulet', slot: 'accessory', atk: 0, def: -3, spd: 0, mag: 10, tier: 3, price: 165, levelReq: 5, classReq: ['mage', 'necromancer'] },
+
+  // Tier 4 general accessories
+  { name: 'Champion Belt', slot: 'accessory', atk: 7, def: 3, spd: 3, mag: 0, tier: 4, price: 420, levelReq: 7 },
+  { name: 'Ethereal Mantle', slot: 'accessory', atk: 0, def: 4, spd: 4, mag: 8, tier: 4, price: 440, levelReq: 7 },
+  { name: 'Blood Pact Ring', slot: 'accessory', atk: 8, def: -2, spd: 2, mag: 8, tier: 4, price: 400, levelReq: 7 },
+
+  // Healer-specific weapons
+  { name: 'Prayer Beads', slot: 'weapon', atk: 0, def: 2, spd: 0, mag: 5, tier: 2, price: 80, classReq: ['healer'] },
+  { name: 'Scepter of Light', slot: 'weapon', atk: 1, def: 3, spd: 0, mag: 12, tier: 3, price: 210, classReq: ['healer'], levelReq: 5 },
+  { name: 'Staff of Salvation', slot: 'weapon', atk: 2, def: 5, spd: 0, mag: 18, tier: 4, price: 510, classReq: ['healer'], levelReq: 8 },
+
+  // Healer-specific armor
+  { name: 'Vestments of Grace', slot: 'armor', atk: 0, def: 3, spd: 1, mag: 4, tier: 2, price: 80, classReq: ['healer'] },
+  { name: 'Robe of Renewal', slot: 'armor', atk: 0, def: 6, spd: 0, mag: 8, tier: 3, price: 200, classReq: ['healer'], levelReq: 5 },
+  { name: 'Divine Raiment', slot: 'armor', atk: 0, def: 10, spd: 1, mag: 13, tier: 4, price: 500, classReq: ['healer'], levelReq: 8 },
+
   // Paladin gear
   { name: 'Blessed Mace', slot: 'weapon', atk: 7, def: 2, spd: 0, mag: 4, tier: 2, price: 90, classReq: ['paladin'] },
   { name: 'Holy Avenger', slot: 'weapon', atk: 12, def: 3, spd: 0, mag: 8, tier: 3, price: 220, classReq: ['paladin'], levelReq: 5 },
@@ -302,8 +339,8 @@ export function getEquipDelta(char, item) {
  * Generate shop inventory for a given floor and party.
  * Returns an array of items biased toward what the party can use.
  */
-export function generateShop(floorNum, party) {
-  const maxTier = Math.min(4, 1 + Math.floor(floorNum / 5));
+export function generateShop(floorNum, party, shopTierBonus = 0) {
+  const maxTier = Math.min(4, 1 + Math.floor(floorNum / 5) + shopTierBonus);
   const available = TREASURE_ITEMS.filter((item) => item.tier <= maxTier);
 
   // Split items into party-usable vs not

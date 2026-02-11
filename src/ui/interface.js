@@ -1,5 +1,5 @@
 import { CLASSES, RACES, getEffectiveStat } from '../game/party.js';
-import { SKILLS, ACHIEVEMENTS, LEARNABLE_SKILLS, getPrestigeBonus, calculatePrestigePoints, getAvailableSkills } from '../game/progression.js';
+import { SKILLS, ACHIEVEMENTS, LEARNABLE_SKILLS, getPrestigeBonus, calculatePrestigePoints, getAvailableSkills, PRESTIGE_UPGRADES, getPrestigeUpgradeLevel } from '../game/progression.js';
 import { canEquip, getEquipDelta } from '../game/dungeon.js';
 import { formatNumber } from '../utils/math.js';
 import { hasSave } from '../utils/save.js';
@@ -155,9 +155,29 @@ export class GameUI {
       </div>
     `;
 
+    // Prestige points display
+    const totalPoints = state.prestige.points || 0;
+    if (totalPoints > 0 || state.prestige.level > 0) {
+      const pointsDisplay = document.createElement('div');
+      pointsDisplay.className = 'prestige-points-display';
+      pointsDisplay.innerHTML = `Prestige Points: <span class="value">${totalPoints}</span>`;
+      screen.appendChild(pointsDisplay);
+    }
+
     // Buttons
     const buttons = document.createElement('div');
     buttons.className = 'prestige-buttons';
+
+    // Prestige shop button (always available if any points earned)
+    if (state.prestige.totalPoints > 0 || canPrestige) {
+      const shopBtn = document.createElement('button');
+      shopBtn.className = 'btn-prestige-shop';
+      shopBtn.innerHTML = `Prestige Shop<span class="btn-desc">Spend prestige points on permanent upgrades</span>`;
+      shopBtn.addEventListener('click', () => {
+        this.showPrestigeShopModal(state);
+      });
+      buttons.appendChild(shopBtn);
+    }
 
     if (canPrestige) {
       const prestigeBtn = document.createElement('button');
@@ -890,6 +910,71 @@ export class GameUI {
         note.style.cssText = 'color:var(--text-dim);font-size:0.8rem;margin-top:8px;';
         note.textContent = 'Reach floor 5 to unlock prestige.';
         content.appendChild(note);
+      }
+    });
+  }
+  showPrestigeShopModal(state) {
+    this.showModal('Prestige Shop', (content) => {
+      const pointsDiv = document.createElement('div');
+      pointsDiv.className = 'shop-gold prestige-shop-points';
+      pointsDiv.innerHTML = `Prestige Points: <span class="value">${state.prestige.points}</span>`;
+      content.appendChild(pointsDiv);
+
+      for (const upgrade of PRESTIGE_UPGRADES) {
+        const currentLevel = getPrestigeUpgradeLevel(state.prestige.upgrades, upgrade.id);
+        const atMax = currentLevel >= upgrade.maxLevel;
+        const nextCost = atMax ? null : upgrade.costs[currentLevel];
+        const canAfford = nextCost !== null && state.prestige.points >= nextCost;
+        const currentValue = currentLevel > 0 ? upgrade.values[currentLevel - 1] : null;
+        const nextValue = atMax ? null : upgrade.values[currentLevel];
+
+        const card = document.createElement('div');
+        card.className = `prestige-upgrade-card${atMax ? ' maxed' : ''}`;
+
+        const header = document.createElement('div');
+        header.className = 'upgrade-header';
+        header.innerHTML = `
+          <span class="upgrade-name">${upgrade.name}</span>
+          <span class="upgrade-level">${atMax ? 'MAX' : `${currentLevel}/${upgrade.maxLevel}`}</span>
+        `;
+        card.appendChild(header);
+
+        const desc = document.createElement('div');
+        desc.className = 'upgrade-desc';
+        desc.textContent = upgrade.description;
+        card.appendChild(desc);
+
+        // Show current and next value
+        const valueDiv = document.createElement('div');
+        valueDiv.className = 'upgrade-values';
+        if (currentValue !== null) {
+          const formatted = typeof currentValue === 'number' && currentValue < 1
+            ? `+${(currentValue * 100).toFixed(0)}%`
+            : `+${currentValue}`;
+          valueDiv.innerHTML = `Current: <span class="stat-up">${formatted}</span>`;
+        }
+        if (nextValue !== null) {
+          const formatted = typeof nextValue === 'number' && nextValue < 1
+            ? `+${(nextValue * 100).toFixed(0)}%`
+            : `+${nextValue}`;
+          valueDiv.innerHTML += `${currentValue !== null ? ' &rarr; ' : ''}<span class="upgrade-next">Next: ${formatted}</span>`;
+        }
+        card.appendChild(valueDiv);
+
+        if (!atMax) {
+          const buyBtn = document.createElement('button');
+          buyBtn.className = 'btn-buy-upgrade';
+          buyBtn.textContent = canAfford ? `Buy (${nextCost} pts)` : `${nextCost} pts needed`;
+          buyBtn.disabled = !canAfford;
+          buyBtn.addEventListener('click', () => {
+            this.engine.buyPrestigeUpgradeAction(upgrade.id);
+            this.closeModal();
+            this.showPrestigeShopModal(this.engine.state);
+          });
+          card.appendChild(buyBtn);
+        }
+
+        content.appendChild(card);
       }
     });
   }

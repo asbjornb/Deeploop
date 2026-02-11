@@ -1,4 +1,4 @@
-import { randChoice, randInt, shuffle } from '../utils/math.js';
+import { randChoice, randInt, shuffle, pickN } from '../utils/math.js';
 
 export const CLASSES = {
   warrior: {
@@ -118,7 +118,7 @@ export function generateName() {
   return `${randChoice(FIRST_NAMES)} ${randChoice(TITLES)}`;
 }
 
-export function createCharacter(classId = null, raceId = null) {
+export function createCharacter(classId = null, raceId = null, { allSkills = false } = {}) {
   const cls = classId || randChoice(Object.keys(CLASSES));
   const race = raceId || randChoice(Object.keys(RACES));
   const classDef = CLASSES[cls];
@@ -126,6 +126,9 @@ export function createCharacter(classId = null, raceId = null) {
 
   const baseHp = classDef.baseStats.hp + raceDef.statMods.hp + randInt(-2, 2);
   const baseMp = classDef.baseStats.mp + raceDef.statMods.mp + randInt(-1, 1);
+
+  // Start with 2 random skills from the class's 3, unless allSkills is true
+  const startSkills = allSkills ? classDef.skills : pickN(classDef.skills, 2);
 
   return {
     id: nextId++,
@@ -142,7 +145,7 @@ export function createCharacter(classId = null, raceId = null) {
     def: classDef.baseStats.def + raceDef.statMods.def + randInt(-1, 1),
     spd: classDef.baseStats.spd + raceDef.statMods.spd + randInt(-1, 1),
     mag: classDef.baseStats.mag + raceDef.statMods.mag + randInt(-1, 1),
-    skills: classDef.skills.map((id) => ({
+    skills: startSkills.map((id) => ({
       id,
       level: 1,
       xp: 0,
@@ -162,10 +165,10 @@ export function getUnlockedClassIds(unlockedAchievements = []) {
   });
 }
 
-export function createParty(size = 4, unlockedAchievements = []) {
+export function createParty(size = 4, unlockedAchievements = [], { allSkills = false } = {}) {
   const available = getUnlockedClassIds(unlockedAchievements);
   const classIds = shuffle(available).slice(0, size);
-  return classIds.map((cls) => createCharacter(cls));
+  return classIds.map((cls) => createCharacter(cls, null, { allSkills }));
 }
 
 export function restoreParty(party) {

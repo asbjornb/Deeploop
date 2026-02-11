@@ -79,3 +79,10 @@ export function formatNumber(n) {
 export function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
+
+/**
+ * Pick N random elements from an array (without replacement).
+ */
+export function pickN(arr, n) {
+  return shuffle(arr).slice(0, n);
+}
