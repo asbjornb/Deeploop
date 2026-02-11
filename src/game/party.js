@@ -114,11 +114,13 @@ const TITLES = [
 
 let nextId = 1;
 
-export function generateName() {
-  return `${randChoice(FIRST_NAMES)} ${randChoice(TITLES)}`;
+export function generateName(usedFirstNames = []) {
+  const available = FIRST_NAMES.filter((n) => !usedFirstNames.includes(n));
+  const firstName = available.length > 0 ? randChoice(available) : randChoice(FIRST_NAMES);
+  return `${firstName} ${randChoice(TITLES)}`;
 }
 
-export function createCharacter(classId = null, raceId = null, { allSkills = false } = {}) {
+export function createCharacter(classId = null, raceId = null, { allSkills = false, usedFirstNames = [] } = {}) {
   const cls = classId || randChoice(Object.keys(CLASSES));
   const race = raceId || randChoice(Object.keys(RACES));
   const classDef = CLASSES[cls];
@@ -132,7 +134,7 @@ export function createCharacter(classId = null, raceId = null, { allSkills = fal
 
   return {
     id: nextId++,
-    name: generateName(),
+    name: generateName(usedFirstNames),
     class: cls,
     race: race,
     level: 1,
@@ -168,7 +170,12 @@ export function getUnlockedClassIds(unlockedAchievements = []) {
 export function createParty(size = 4, unlockedAchievements = [], { allSkills = false } = {}) {
   const available = getUnlockedClassIds(unlockedAchievements);
   const classIds = shuffle(available).slice(0, size);
-  return classIds.map((cls) => createCharacter(cls, null, { allSkills }));
+  const usedFirstNames = [];
+  return classIds.map((cls) => {
+    const char = createCharacter(cls, null, { allSkills, usedFirstNames });
+    usedFirstNames.push(char.name.split(' ')[0]);
+    return char;
+  });
 }
 
 export function restoreParty(party) {

@@ -1122,8 +1122,9 @@ input {
 
 .item-char-row .char-label {
   color: var(--text-primary);
-  min-width: 60px;
+  min-width: 120px;
   font-weight: bold;
+  font-size: 0.7rem;
 }
 
 .item-char-row .equip-blocked {
@@ -1169,6 +1170,21 @@ input {
 .btn-buy:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.btn-sell {
+  width: 100%;
+  margin-top: 4px !important;
+  padding: 5px 12px !important;
+  border-color: var(--accent-orange) !important;
+  color: var(--accent-orange) !important;
+  font-size: 0.75rem !important;
+}
+
+.btn-sell:hover {
+  background: var(--bg-highlight) !important;
+  color: var(--accent-gold) !important;
+  border-color: var(--accent-gold) !important;
 }
 
 /* Prestige Screen */
